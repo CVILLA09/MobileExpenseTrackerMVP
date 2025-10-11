@@ -51,8 +51,8 @@ export function PrimarySummaryCard({
         </p>
       </div>
 
-      {/* Selectors Row - single line on sm+ */}
-      <div className="selector-row flex items-center gap-2 flex-wrap sm:flex-nowrap mb-4">
+      {/* Selectors Row - single line with horizontal scroll */}
+      <div className="flex items-center gap-2 flex-nowrap whitespace-nowrap overflow-x-auto no-scrollbar pb-1 mb-4">
         {/* Left cluster: date + chart-type */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <DateSelector 
@@ -66,11 +66,13 @@ export function PrimarySummaryCard({
         </div>
 
         {/* Right cluster: DSMA */}
-        <div className="order-2 sm:order-none w-full sm:w-auto ml-0 sm:ml-auto sm:min-w-[200px]">
-          <PeriodSelector
-            selected={selectedPeriod}
-            onChange={onPeriodChange}
-          />
+        <div className="ml-auto flex-shrink-0">
+          <div className="inline-flex items-center gap-2 min-w-[184px]">
+            <PeriodSelector
+              selected={selectedPeriod}
+              onChange={onPeriodChange}
+            />
+          </div>
         </div>
       </div>
 

@@ -18,17 +18,18 @@ export function CategoryChart({ type, chartType, data, total }: CategoryChartPro
   const title = type === "income" ? "Ingresos" : "Gastos";
   
   const renderDonutChart = () => (
-    <div className="relative w-full h-[180px] flex items-center justify-center p-4">
+    <div className="relative overflow-visible p-3 h-[220px]">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
             data={data}
             cx="50%"
             cy="50%"
-            innerRadius={35}
-            outerRadius={55}
-            paddingAngle={2}
+            innerRadius="60%"
+            outerRadius="80%"
+            paddingAngle={1.5}
             dataKey="value"
+            strokeWidth={0}
           >
             {data.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={entry.color} />
@@ -46,9 +47,9 @@ export function CategoryChart({ type, chartType, data, total }: CategoryChartPro
   );
 
   const renderLineChart = () => (
-    <div className="w-full h-[180px] p-2">
+    <div className="relative overflow-visible p-3 h-[220px]">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+        <LineChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
           <XAxis 
             dataKey="name" 
             tick={{ fontSize: 10, fill: "var(--text-secondary)" }}
@@ -71,9 +72,9 @@ export function CategoryChart({ type, chartType, data, total }: CategoryChartPro
   );
 
   const renderBarChart = () => (
-    <div className="w-full h-[180px] p-2">
+    <div className="relative overflow-visible p-3 h-[220px]">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+        <BarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
           <XAxis 
             dataKey="name" 
             tick={{ fontSize: 10, fill: "var(--text-secondary)" }}
@@ -100,7 +101,7 @@ export function CategoryChart({ type, chartType, data, total }: CategoryChartPro
       </h4>
       
       {data.length === 0 ? (
-        <div className="w-full h-[180px] flex items-center justify-center">
+        <div className="w-full h-[220px] flex items-center justify-center">
           <span className="caption text-text-secondary">Sin datos</span>
         </div>
       ) : (

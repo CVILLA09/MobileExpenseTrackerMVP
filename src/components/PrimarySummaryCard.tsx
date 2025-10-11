@@ -51,9 +51,9 @@ export function PrimarySummaryCard({
         </p>
       </div>
 
-      {/* Selectors Row - responsive wrap */}
-      <div className="selector-row flex flex-wrap items-center gap-2 mb-4">
-        {/* Izquierda: calendario + tipo de gráfico */}
+      {/* Selectors Row - single line on sm+ */}
+      <div className="selector-row flex items-center gap-2 flex-wrap sm:flex-nowrap mb-4">
+        {/* Left cluster: date + chart-type */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <DateSelector 
             value={formatDateValue(selectedDate, selectedPeriod)}
@@ -65,8 +65,8 @@ export function PrimarySummaryCard({
           />
         </div>
 
-        {/* Derecha: DSMA (empujar y reservar ancho mínimo) */}
-        <div className="ml-auto min-w-[184px]">
+        {/* Right cluster: DSMA */}
+        <div className="order-2 sm:order-none w-full sm:w-auto ml-0 sm:ml-auto sm:min-w-[200px]">
           <PeriodSelector
             selected={selectedPeriod}
             onChange={onPeriodChange}

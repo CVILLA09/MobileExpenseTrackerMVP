@@ -18,15 +18,15 @@ export function CategoryChart({ type, chartType, data, total }: CategoryChartPro
   const title = type === "income" ? "Ingresos" : "Gastos";
   
   const renderDonutChart = () => (
-    <div className="relative overflow-visible p-3 h-[220px]">
+    <div className="relative overflow-visible h-[180px] sm:h-[210px] md:h-[240px] lg:h-[260px] w-full flex items-center justify-center">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
             data={data}
             cx="50%"
             cy="50%"
-            innerRadius="60%"
-            outerRadius="80%"
+            innerRadius="62%"
+            outerRadius="78%"
             paddingAngle={1.5}
             dataKey="value"
             strokeWidth={0}
@@ -47,7 +47,7 @@ export function CategoryChart({ type, chartType, data, total }: CategoryChartPro
   );
 
   const renderLineChart = () => (
-    <div className="relative overflow-visible p-3 h-[220px]">
+    <div className="relative overflow-visible h-[180px] sm:h-[210px] md:h-[240px] lg:h-[260px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
           <XAxis 
@@ -72,7 +72,7 @@ export function CategoryChart({ type, chartType, data, total }: CategoryChartPro
   );
 
   const renderBarChart = () => (
-    <div className="relative overflow-visible p-3 h-[220px]">
+    <div className="relative overflow-visible h-[180px] sm:h-[210px] md:h-[240px] lg:h-[260px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
           <XAxis 
@@ -101,7 +101,7 @@ export function CategoryChart({ type, chartType, data, total }: CategoryChartPro
       </h4>
       
       {data.length === 0 ? (
-        <div className="w-full h-[220px] flex items-center justify-center">
+        <div className="w-full h-[180px] sm:h-[210px] md:h-[240px] lg:h-[260px] flex items-center justify-center">
           <span className="caption text-text-secondary">Sin datos</span>
         </div>
       ) : (

@@ -51,29 +51,20 @@ export function PrimarySummaryCard({
         </p>
       </div>
 
-      {/* Selectors Row - single line with horizontal scroll */}
-      <div className="flex items-center gap-2 flex-nowrap whitespace-nowrap overflow-x-auto no-scrollbar pb-1 mb-4">
-        {/* Left cluster: date + chart-type */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <DateSelector 
-            value={formatDateValue(selectedDate, selectedPeriod)}
-            onClick={onDateSelectorClick}
-          />
-          <ChartTypeSelector
-            selected={chartType}
-            onChange={onChartTypeChange}
-          />
-        </div>
-
-        {/* Right cluster: DSMA */}
-        <div className="ml-auto flex-shrink-0">
-          <div className="inline-flex items-center gap-2 min-w-[184px]">
-            <PeriodSelector
-              selected={selectedPeriod}
-              onChange={onPeriodChange}
-            />
-          </div>
-        </div>
+      {/* Selectors Row - Left aligned */}
+      <div className="flex items-center justify-start gap-2 mb-4 overflow-x-auto">
+        <DateSelector 
+          value={formatDateValue(selectedDate, selectedPeriod)}
+          onClick={onDateSelectorClick}
+        />
+        <ChartTypeSelector
+          selected={chartType}
+          onChange={onChartTypeChange}
+        />
+        <PeriodSelector
+          selected={selectedPeriod}
+          onChange={onPeriodChange}
+        />
       </div>
 
       {/* Charts Grid */}

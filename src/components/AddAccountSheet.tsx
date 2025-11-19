@@ -1,5 +1,5 @@
 import { X, Banknote, Building2, PiggyBank, TrendingUp, CreditCard, FileText, ChevronLeft } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 export interface AccountFormData {
   // Common fields
@@ -96,6 +96,7 @@ export function AddAccountSheet({ isOpen, onClose, onSave }: AddAccountSheetProp
     currency: "MXN",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const carouselRef = useRef<HTMLDivElement>(null);
 
   const handleTypeSelect = () => {
     setFormData({ 
@@ -103,6 +104,28 @@ export function AddAccountSheet({ isOpen, onClose, onSave }: AddAccountSheetProp
       accountType: accountTypes[currentTypeIndex].id 
     });
     setStep("form");
+  };
+
+  const handleCarouselScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const container = e.currentTarget;
+    const scrollLeft = container.scrollLeft;
+    const containerWidth = container.clientWidth;
+    const cardWidth = containerWidth; // Cada tarjeta ocupa el ancho completo del contenedor
+    const newIndex = Math.round(scrollLeft / cardWidth);
+    if (newIndex !== currentTypeIndex && newIndex >= 0 && newIndex < accountTypes.length) {
+      setCurrentTypeIndex(newIndex);
+    }
+  };
+
+  const handlePaginationClick = (index: number) => {
+    setCurrentTypeIndex(index);
+    if (carouselRef.current) {
+      const containerWidth = carouselRef.current.clientWidth;
+      carouselRef.current.scrollTo({
+        left: index * containerWidth,
+        behavior: 'smooth'
+      });
+    }
   };
 
   const handleBack = () => {
@@ -146,6 +169,10 @@ export function AddAccountSheet({ isOpen, onClose, onSave }: AddAccountSheetProp
       currency: "MXN",
     });
     setErrors({});
+    // Resetear scroll del carrusel
+    if (carouselRef.current) {
+      carouselRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+    }
     onClose();
   };
 
@@ -190,7 +217,11 @@ export function AddAccountSheet({ isOpen, onClose, onSave }: AddAccountSheetProp
 
             {/* Carrusel de tarjetas */}
             <div className="relative">
-              <div className="overflow-x-auto scrollbar-hide snap-x snap-mandatory flex gap-4 pb-2">
+              <div 
+                ref={carouselRef}
+                onScroll={handleCarouselScroll}
+                className="overflow-x-auto scrollbar-hide snap-x snap-mandatory flex gap-4 pb-2"
+              >
                 {accountTypes.map((type, index) => {
                   const Icon = type.icon;
                   const isActive = index === currentTypeIndex;
@@ -198,7 +229,7 @@ export function AddAccountSheet({ isOpen, onClose, onSave }: AddAccountSheetProp
                   return (
                     <button
                       key={type.id}
-                      onClick={() => setCurrentTypeIndex(index)}
+                      onClick={() => handlePaginationClick(index)}
                       className={`flex-shrink-0 w-full snap-center transition-all ${
                         isActive ? "scale-100" : "scale-95 opacity-60"
                       }`}
@@ -235,7 +266,7 @@ export function AddAccountSheet({ isOpen, onClose, onSave }: AddAccountSheetProp
               {accountTypes.map((_, index) => (
                 <button
                   key={index}
-                  onClick={() => setCurrentTypeIndex(index)}
+                  onClick={() => handlePaginationClick(index)}
                   className={`h-2 rounded-full transition-all ${
                     index === currentTypeIndex 
                       ? "w-6 bg-brand" 
@@ -303,7 +334,7 @@ export function AddAccountSheet({ isOpen, onClose, onSave }: AddAccountSheetProp
                   value={formData.balance || ""}
                   onChange={(e) => setFormData({ ...formData, balance: parseFloat(e.target.value) || 0 })}
                   className="w-full pl-8 pr-4 py-3 bg-surface text-text-primary rounded-2xl text-[20px] leading-[28px] outline-none"
-                  placeholder="0.00"
+                  placeholder="$ 0.00"
                   style={{ minHeight: '44px', fontVariantNumeric: 'tabular-nums' }}
                 />
               </div>
@@ -382,7 +413,7 @@ export function AddAccountSheet({ isOpen, onClose, onSave }: AddAccountSheetProp
                       value={formData.expectedYield || ""}
                       onChange={(e) => setFormData({ ...formData, expectedYield: parseFloat(e.target.value) || undefined })}
                       className="w-full px-4 pr-8 py-3 bg-surface text-text-primary rounded-2xl outline-none"
-                      placeholder="6.5"
+                      placeholder="Ej. 6.5 %"
                       style={{ minHeight: '44px' }}
                     />
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary">%</span>
@@ -421,7 +452,7 @@ export function AddAccountSheet({ isOpen, onClose, onSave }: AddAccountSheetProp
                       className={`w-full pl-8 pr-4 py-3 bg-surface text-text-primary rounded-2xl text-[20px] leading-[28px] outline-none ${
                         errors.creditLimit ? "ring-2 ring-err" : ""
                       }`}
-                      placeholder="20,000.00"
+                      placeholder="$ 20,000.00"
                       style={{ minHeight: '44px', fontVariantNumeric: 'tabular-nums' }}
                     />
                   </div>

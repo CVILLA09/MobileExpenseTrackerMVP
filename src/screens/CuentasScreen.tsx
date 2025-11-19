@@ -144,12 +144,13 @@ export function CuentasScreen({ onThemeToggle, onNavigate, isDark }: CuentasScre
   const [isNavDrawerOpen, setIsNavDrawerOpen] = useState(false);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [isAddAccountSheetOpen, setIsAddAccountSheetOpen] = useState(false);
+  const [categories, setCategories] = useState<AccountCategory[]>(mockCategories);
   
-  const totalAssets = mockCategories
+  const totalAssets = categories
     .filter(cat => cat.type === "asset")
     .reduce((sum, cat) => sum + cat.total, 0);
   
-  const totalLiabilities = mockCategories
+  const totalLiabilities = categories
     .filter(cat => cat.type === "liability")
     .reduce((sum, cat) => sum + cat.total, 0);
   
@@ -173,6 +174,113 @@ export function CuentasScreen({ onThemeToggle, onNavigate, isDark }: CuentasScre
     setIsAddAccountSheetOpen(true);
   };
 
+  // Mapear accountType a nombre de categoría y tipo (asset/liability)
+  const getCategoryInfo = (accountType: AccountFormData["accountType"]) => {
+    const mapping: Record<string, { name: string; type: "asset" | "liability"; icon: AccountCategory["icon"] }> = {
+      cash: { name: "Cash", type: "asset", icon: "cash" },
+      checking: { name: "Checking", type: "asset", icon: "checking" },
+      savings: { name: "Savings", type: "asset", icon: "savings" },
+      investment: { name: "Investment", type: "asset", icon: "investment" },
+      credit_card: { name: "Credit", type: "liability", icon: "credit" },
+      loan: { name: "Loan", type: "liability", icon: "loan" },
+    };
+    return mapping[accountType];
+  };
+
+  // Construir detalles según el tipo de cuenta
+  const buildAccountDetails = (formData: AccountFormData): string | undefined => {
+    if (formData.accountType === "credit_card") {
+      const parts: string[] = [];
+      if (formData.billingDay) parts.push(`Día de corte: ${formData.billingDay}`);
+      if (formData.paymentDueDay) parts.push(`Pago límite: ${formData.paymentDueDay}`);
+      return parts.length > 0 ? parts.join(" · ") : undefined;
+    }
+    if (formData.accountType === "loan") {
+      const parts: string[] = [];
+      if (formData.paymentAmount) parts.push(`Mensualidad: $${formData.paymentAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+      if (formData.nextPaymentDate) {
+        const date = new Date(formData.nextPaymentDate);
+        const formattedDate = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`;
+        parts.push(`Próximo pago: ${formattedDate}`);
+      }
+      return parts.length > 0 ? parts.join(" · ") : undefined;
+    }
+    if (formData.accountType === "investment") {
+      const parts: string[] = [];
+      if (formData.broker) parts.push(`Broker: ${formData.broker}`);
+      if (formData.investmentType) parts.push(formData.investmentType);
+      return parts.length > 0 ? parts.join(" · ") : undefined;
+    }
+    return undefined;
+  };
+
+  // Generar ID único para la nueva cuenta
+  const generateAccountId = (categoryId: string): string => {
+    const category = categories.find(cat => cat.id === categoryId);
+    if (!category) return `${categoryId}-1`;
+    const existingIds = category.accounts.map(acc => {
+      const parts = acc.id.split('-');
+      return parts.length > 1 ? parseInt(parts[1]) : 0;
+    });
+    const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
+    return `${categoryId}-${maxId + 1}`;
+  };
+
+  const handleSaveAccount = (formData: AccountFormData) => {
+    const categoryInfo = getCategoryInfo(formData.accountType);
+    if (!categoryInfo) return;
+
+    // Buscar o crear la categoría
+    let category = categories.find(cat => cat.name === categoryInfo.name);
+    
+    if (!category) {
+      // Si no existe la categoría, crear una nueva
+      const newCategoryId = String(categories.length + 1);
+      category = {
+        id: newCategoryId,
+        name: categoryInfo.name,
+        type: categoryInfo.type,
+        icon: categoryInfo.icon,
+        total: 0,
+        accounts: [],
+      };
+    }
+
+    // Crear la nueva cuenta
+    const newAccount: IndividualAccount = {
+      id: generateAccountId(category.id),
+      name: formData.name,
+      balance: formData.balance,
+      details: buildAccountDetails(formData),
+    };
+
+    // Actualizar la categoría con la nueva cuenta
+    const updatedAccounts = [...category.accounts, newAccount];
+    const updatedTotal = updatedAccounts.reduce((sum, acc) => sum + acc.balance, 0);
+
+    const updatedCategory: AccountCategory = {
+      ...category,
+      accounts: updatedAccounts,
+      total: updatedTotal,
+    };
+
+    // Actualizar el estado de categorías
+    setCategories(prevCategories => {
+      const filtered = prevCategories.filter(cat => cat.id !== category!.id);
+      return [...filtered, updatedCategory].sort((a, b) => {
+        // Mantener el orden: assets primero, luego liabilities
+        if (a.type !== b.type) {
+          return a.type === "asset" ? -1 : 1;
+        }
+        // Dentro del mismo tipo, mantener el orden original
+        const order = ["Cash", "Checking", "Savings", "Investment", "Credit", "Loan"];
+        return order.indexOf(a.name) - order.indexOf(b.name);
+      });
+    });
+
+    setIsAddAccountSheetOpen(false);
+  };
+
 
 
   return (
@@ -191,13 +299,6 @@ export function CuentasScreen({ onThemeToggle, onNavigate, isDark }: CuentasScre
         onNavigate={onNavigate}
         activeScreen="cuentas"
       />
-
-      {/* App Bar Title */}
-      <div className="px-4 pb-3">
-        <h1 className="text-[24px] leading-[32px] text-text-primary">
-          Cuentas
-        </h1>
-      </div>
 
       <div 
         className="flex-1 overflow-y-auto pb-[100px] px-4"
@@ -288,7 +389,7 @@ export function CuentasScreen({ onThemeToggle, onNavigate, isDark }: CuentasScre
 
             <div className="bg-card-custom rounded-2xl border border-divider overflow-hidden shadow-sm">
               <div className="divide-y divide-divider">
-                {mockCategories.map((category) => {
+                {categories.map((category) => {
                   const Icon = categoryIcons[category.icon];
                   return (
                     <div key={category.id}>
@@ -381,11 +482,7 @@ export function CuentasScreen({ onThemeToggle, onNavigate, isDark }: CuentasScre
       <AddAccountSheet
         isOpen={isAddAccountSheetOpen}
         onClose={() => setIsAddAccountSheetOpen(false)}
-        onSave={(formData: AccountFormData) => {
-          // Handle form submission
-          console.log("New account data:", formData);
-          setIsAddAccountSheetOpen(false);
-        }}
+        onSave={handleSaveAccount}
       />
     </div>
   );

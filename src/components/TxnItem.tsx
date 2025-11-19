@@ -8,11 +8,13 @@ export interface Transaction {
   category: string;
   date: string;
   note?: string;
+  account_id?: string;
 }
 
 interface TxnItemProps {
   transaction?: Transaction;
   skeleton?: boolean;
+  accounts?: Array<{ id: string; name: string }>;
 }
 
 const categoryIcons: Record<string, typeof Fuel> = {
@@ -32,7 +34,7 @@ function getCategoryIcon(category: string) {
   return Icon;
 }
 
-export function TxnItem({ transaction, skeleton = false }: TxnItemProps) {
+export function TxnItem({ transaction, skeleton = false, accounts = [] }: TxnItemProps) {
   if (skeleton) {
     return (
       <div className="flex items-center gap-3 p-3">
@@ -48,9 +50,14 @@ export function TxnItem({ transaction, skeleton = false }: TxnItemProps) {
 
   if (!transaction) return null;
 
-  const { type, amount, category, date } = transaction;
+  const { type, amount, category, date, account_id } = transaction;
   const isIncome = type === "income";
   const Icon = getCategoryIcon(category);
+  
+  // Buscar nombre de cuenta
+  const accountName = account_id 
+    ? accounts.find(acc => acc.id === account_id)?.name 
+    : null;
 
   return (
     <div className="flex items-center gap-3 p-3 hover:bg-surface/50 transition-colors">
@@ -63,6 +70,9 @@ export function TxnItem({ transaction, skeleton = false }: TxnItemProps) {
       <div className="flex-1 min-w-0">
         <p className="text-[16px] leading-[24px] text-text-primary truncate">
           {category}
+          {accountName && (
+            <span className="text-text-secondary"> · {accountName}</span>
+          )}
         </p>
         <p className="caption text-text-secondary">
           {date}

@@ -7,15 +7,17 @@ interface ManualFormProps {
   onClose: () => void;
   onSave: (data: TransactionData) => void;
   initialData?: Partial<TransactionData>;
+  accounts?: Array<{ id: string; name: string }>;
 }
 
-export function ManualForm({ isOpen, onClose, onSave, initialData }: ManualFormProps) {
+export function ManualForm({ isOpen, onClose, onSave, initialData, accounts = [] }: ManualFormProps) {
   const [formData, setFormData] = useState<TransactionData>({
     type: initialData?.type || "expense",
     amount: initialData?.amount || 0,
     category: initialData?.category || "",
     date: initialData?.date || "Hoy",
     note: initialData?.note || "",
+    account_id: initialData?.account_id || "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -181,6 +183,26 @@ export function ManualForm({ isOpen, onClose, onSave, initialData }: ManualFormP
               style={{ minHeight: '44px' }}
             />
           </div>
+
+          {/* Cuenta */}
+          {accounts.length > 0 && (
+            <div>
+              <label className="caption text-text-secondary mb-2 block">Cuenta (opcional)</label>
+              <select
+                value={formData.account_id || ""}
+                onChange={(e) => setFormData({ ...formData, account_id: e.target.value || undefined })}
+                className="w-full px-4 py-3 bg-surface text-text-primary rounded-2xl outline-none appearance-none"
+                style={{ minHeight: '44px' }}
+              >
+                <option value="">Seleccionar cuenta</option>
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Botón Guardar */}
           <button

@@ -38,6 +38,7 @@ interface HomeScreenProps {
   isDark: boolean;
   categories: Category[];
   loading?: boolean;
+  accounts?: Array<{ id: string; balance: number; name: string }>;
 }
 
 export function HomeScreen({
@@ -56,6 +57,7 @@ export function HomeScreen({
   isDark,
   categories,
   loading = false,
+  accounts,
 }: HomeScreenProps) {
   const [isDrawerExpanded, setIsDrawerExpanded] = useState(false);
   const [isNavDrawerOpen, setIsNavDrawerOpen] = useState(false);
@@ -76,6 +78,12 @@ export function HomeScreen({
 
   // Calculate balance
   const balance = useMemo(() => {
+    // Si hay cuentas, calcular desde los saldos de cuentas
+    if (accounts && accounts.length > 0) {
+      return accounts.reduce((sum, acc) => sum + acc.balance, 0);
+    }
+    
+    // Fallback: calcular desde transacciones
     const income = transactions
       .filter(t => t.type === "income")
       .reduce((sum, t) => sum + t.amount, 0);
@@ -83,7 +91,7 @@ export function HomeScreen({
       .filter(t => t.type === "expense")
       .reduce((sum, t) => sum + t.amount, 0);
     return income - expense;
-  }, [transactions]);
+  }, [transactions, accounts]);
 
   // Calculate category data for charts
   const categoryData = useMemo(() => {
@@ -220,7 +228,11 @@ export function HomeScreen({
                 ) : (
                   <div className="divide-y divide-divider">
                     {transactions.map((txn) => (
-                      <TxnItem key={txn.id} transaction={txn} />
+                      <TxnItem 
+                        key={txn.id} 
+                        transaction={txn}
+                        accounts={accounts?.map(acc => ({ id: acc.id, name: acc.name })) || []}
+                      />
                     ))}
                   </div>
                 )}

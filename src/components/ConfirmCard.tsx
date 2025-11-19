@@ -6,6 +6,7 @@ export interface TransactionData {
   category: string;
   date: string;
   note?: string;
+  account_id?: string;
 }
 
 interface ConfirmCardProps {

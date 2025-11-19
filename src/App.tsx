@@ -11,6 +11,116 @@ import { toast } from "sonner@2.0.3";
 
 type Screen = "onboarding" | "home" | "cuentas" | "categorias";
 
+// Tipos de cuentas
+export interface IndividualAccount {
+  id: string;
+  name: string;
+  balance: number;
+  details?: string;
+}
+
+export interface AccountCategory {
+  id: string;
+  name: string;
+  type: "asset" | "liability";
+  icon: "cash" | "checking" | "savings" | "credit" | "investment" | "loan";
+  total: number;
+  accounts: IndividualAccount[];
+}
+
+// Datos iniciales de cuentas
+const initialAccountCategories: AccountCategory[] = [
+  {
+    id: "1",
+    name: "Cash",
+    type: "asset",
+    icon: "cash",
+    total: 2500.00,
+    accounts: [
+      { id: "1-1", name: "Cartera", balance: 1250.00 },
+      { id: "1-2", name: "Efectivo Casa", balance: 1250.00 },
+    ],
+  },
+  {
+    id: "2",
+    name: "Checking",
+    type: "asset",
+    icon: "checking",
+    total: 8934.25,
+    accounts: [
+      { id: "2-1", name: "Banco Nómina", balance: 8934.25 },
+    ],
+  },
+  {
+    id: "3",
+    name: "Savings",
+    type: "asset",
+    icon: "savings",
+    total: 15000.00,
+    accounts: [
+      { id: "3-1", name: "Ahorro Meta", balance: 10000.00 },
+      { id: "3-2", name: "Fondo Emergencia", balance: 5000.00 },
+    ],
+  },
+  {
+    id: "4",
+    name: "Credit",
+    type: "liability",
+    icon: "credit",
+    total: 5420.50,
+    accounts: [
+      { 
+        id: "4-1", 
+        name: "Tarjeta Azul", 
+        balance: 3420.50,
+        details: "Día de corte: 15 · Pago límite: 22"
+      },
+      { 
+        id: "4-2", 
+        name: "Tarjeta Oro", 
+        balance: 2000.00,
+        details: "Día de corte: 10 · Pago límite: 18"
+      },
+    ],
+  },
+  {
+    id: "5",
+    name: "Investment",
+    type: "asset",
+    icon: "investment",
+    total: 3565.50,
+    accounts: [
+      { 
+        id: "5-1", 
+        name: "Crypto Portfolio", 
+        balance: 2565.50,
+        details: "Broker: Binance · Spot"
+      },
+      { 
+        id: "5-2", 
+        name: "Acciones", 
+        balance: 1000.00,
+        details: "Broker: GBM · Renta Variable"
+      },
+    ],
+  },
+  {
+    id: "6",
+    name: "Loan",
+    type: "liability",
+    icon: "loan",
+    total: 1500.00,
+    accounts: [
+      { 
+        id: "6-1", 
+        name: "Préstamo Personal", 
+        balance: 1500.00,
+        details: "Mensualidad: $500 · Próximo pago: 05/12"
+      },
+    ],
+  },
+];
+
 const defaultCategories: Category[] = [
   { id: "1", name: "Comida", type: "expense", icon: "Utensils", color: "#4CAF50" },
   { id: "2", name: "Transporte", type: "expense", icon: "Car", color: "#2196F3" },
@@ -112,6 +222,37 @@ export default function App() {
   const [editingTransaction, setEditingTransaction] = useState<TransactionData | null>(null);
   const [isDark, setIsDark] = useState(true);
   const [categories, setCategories] = useState<Category[]>(defaultCategories);
+  const [accountCategories, setAccountCategories] = useState<AccountCategory[]>(initialAccountCategories);
+
+  // Helper para actualizar saldo de cuenta
+  const updateAccountBalance = (
+    accountId: string,
+    amount: number,
+    type: "income" | "expense"
+  ) => {
+    setAccountCategories(prevCategories => {
+      return prevCategories.map(category => {
+        const accountIndex = category.accounts.findIndex(acc => acc.id === accountId);
+        
+        if (accountIndex === -1) return category;
+        
+        const delta = type === "income" ? amount : -amount;
+        const updatedAccounts = [...category.accounts];
+        updatedAccounts[accountIndex] = {
+          ...updatedAccounts[accountIndex],
+          balance: updatedAccounts[accountIndex].balance + delta,
+        };
+        
+        const updatedTotal = updatedAccounts.reduce((sum, acc) => sum + acc.balance, 0);
+        
+        return {
+          ...category,
+          accounts: updatedAccounts,
+          total: updatedTotal,
+        };
+      });
+    });
+  };
 
   // Apply dark mode
   useEffect(() => {
@@ -174,6 +315,11 @@ export default function App() {
     // Add to transactions
     setTransactions((prev) => [newTransaction, ...prev]);
 
+    // Update account balance if account_id is provided
+    if (confirmCard.account_id) {
+      updateAccountBalance(confirmCard.account_id, confirmCard.amount, confirmCard.type);
+    }
+
     // Show success toast
     toast.success("Transacción agregada", {
       description: `${confirmCard.type === "expense" ? "Gasto" : "Ingreso"} de $${confirmCard.amount.toFixed(2)} registrado`,
@@ -203,6 +349,11 @@ export default function App() {
     };
 
     setTransactions((prev) => [newTransaction, ...prev]);
+
+    // Update account balance if account_id is provided
+    if (data.account_id) {
+      updateAccountBalance(data.account_id, data.amount, data.type);
+    }
 
     toast.success("Transacción agregada", {
       description: `${data.type === "expense" ? "Gasto" : "Ingreso"} de $${data.amount.toFixed(2)} registrado`,
@@ -250,6 +401,7 @@ export default function App() {
           onNavigate={handleNavigate}
           isDark={isDark}
           categories={categories}
+          accounts={accountCategories.flatMap(cat => cat.accounts.map(acc => ({ id: acc.id, balance: acc.balance, name: acc.name })))}
         />
       )}
 
@@ -258,6 +410,8 @@ export default function App() {
           onThemeToggle={handleSettingsClick}
           onNavigate={handleNavigate}
           isDark={isDark}
+          accountCategories={accountCategories}
+          onUpdateAccountCategories={setAccountCategories}
         />
       )}
 
@@ -279,6 +433,7 @@ export default function App() {
         }}
         onSave={handleManualFormSave}
         initialData={editingTransaction || undefined}
+        accounts={accountCategories.flatMap(cat => cat.accounts.map(acc => ({ id: acc.id, name: acc.name })))}
       />
 
       <Toaster />

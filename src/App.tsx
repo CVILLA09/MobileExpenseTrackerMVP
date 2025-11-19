@@ -8,6 +8,7 @@ import { TransactionData } from "./components/ConfirmCard";
 import { Transaction } from "./components/TxnItem";
 import { Toaster } from "./components/ui/sonner";
 import { toast } from "sonner@2.0.3";
+import { isAssetAccount, isLiabilityAccount, ICON_TO_ACCOUNT_TYPE } from "./utils/accounts";
 
 type Screen = "onboarding" | "home" | "cuentas" | "categorias";
 
@@ -236,7 +237,21 @@ export default function App() {
         
         if (accountIndex === -1) return category;
         
-        const delta = type === "income" ? amount : -amount;
+        // Determinar si es activo o pasivo basado en el icono de la categoría
+        const accountType = ICON_TO_ACCOUNT_TYPE[category.icon] || "cash";
+        const isAsset = isAssetAccount(accountType);
+        const isLiability = isLiabilityAccount(accountType);
+        
+        let delta = 0;
+        
+        if (isAsset) {
+          // Para activos: income suma, expense resta
+          delta = type === "income" ? amount : -amount;
+        } else if (isLiability) {
+          // Para pasivos: income resta (reduce deuda), expense suma (aumenta deuda)
+          delta = type === "income" ? -amount : amount;
+        }
+        
         const updatedAccounts = [...category.accounts];
         updatedAccounts[accountIndex] = {
           ...updatedAccounts[accountIndex],
@@ -401,7 +416,13 @@ export default function App() {
           onNavigate={handleNavigate}
           isDark={isDark}
           categories={categories}
-          accounts={accountCategories.flatMap(cat => cat.accounts.map(acc => ({ id: acc.id, balance: acc.balance, name: acc.name })))}
+          accounts={accountCategories
+            .filter(cat => cat.type === "asset") // Solo categorías de activos
+            .flatMap(cat => cat.accounts.map(acc => ({ 
+              id: acc.id, 
+              balance: acc.balance, 
+              name: acc.name 
+            })))}
         />
       )}
 
@@ -433,7 +454,15 @@ export default function App() {
         }}
         onSave={handleManualFormSave}
         initialData={editingTransaction || undefined}
-        accounts={accountCategories.flatMap(cat => cat.accounts.map(acc => ({ id: acc.id, name: acc.name })))}
+        accounts={accountCategories.flatMap(cat => 
+          cat.accounts.map(acc => ({ 
+            id: acc.id, 
+            name: acc.name,
+            categoryName: cat.name,
+            categoryIcon: cat.icon,
+            balance: acc.balance
+          }))
+        )}
       />
 
       <Toaster />

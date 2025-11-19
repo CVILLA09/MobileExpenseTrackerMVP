@@ -194,6 +194,8 @@ export function HomeScreen({
               expenseTotal={categoryData.expenseTotal}
               selectedDate={selectedDate}
               onDateSelectorClick={() => setIsDateModalOpen(true)}
+              categoryType={categoryType}
+              onCategoryTypeChange={setCategoryType}
             />
 
             {/* Categories Section */}

@@ -7,13 +7,13 @@ interface ChartTypeSelectorProps {
 
 export function ChartTypeSelector({ selected, onChange }: ChartTypeSelectorProps) {
   return (
-    <div className="flex items-center gap-1 p-1 bg-white/20 rounded-full">
+    <div className="flex items-center gap-0.5 p-0.5 bg-text-primary/10 rounded-full border border-text-primary/10">
       <button
         onClick={() => onChange("donut")}
-        className={`w-8 h-8 flex items-center justify-center rounded-full transition-all ${
+        className={`w-7 h-7 flex items-center justify-center rounded-full transition-all ${
           selected === "donut"
-            ? "bg-white text-brand"
-            : "text-white/60 hover:text-white"
+            ? "bg-brand text-white shadow-sm"
+            : "text-text-primary/60 hover:text-text-primary"
         }`}
         aria-label="Gráfico de dona"
       >
@@ -21,10 +21,10 @@ export function ChartTypeSelector({ selected, onChange }: ChartTypeSelectorProps
       </button>
       <button
         onClick={() => onChange("line")}
-        className={`w-8 h-8 flex items-center justify-center rounded-full transition-all ${
+        className={`w-7 h-7 flex items-center justify-center rounded-full transition-all ${
           selected === "line"
-            ? "bg-white text-brand"
-            : "text-white/60 hover:text-white"
+            ? "bg-brand text-white shadow-sm"
+            : "text-text-primary/60 hover:text-text-primary"
         }`}
         aria-label="Gráfico de línea"
       >
@@ -32,10 +32,10 @@ export function ChartTypeSelector({ selected, onChange }: ChartTypeSelectorProps
       </button>
       <button
         onClick={() => onChange("bar")}
-        className={`w-8 h-8 flex items-center justify-center rounded-full transition-all ${
+        className={`w-7 h-7 flex items-center justify-center rounded-full transition-all ${
           selected === "bar"
-            ? "bg-white text-brand"
-            : "text-white/60 hover:text-white"
+            ? "bg-brand text-white shadow-sm"
+            : "text-text-primary/60 hover:text-text-primary"
         }`}
         aria-label="Gráfico de barras"
       >

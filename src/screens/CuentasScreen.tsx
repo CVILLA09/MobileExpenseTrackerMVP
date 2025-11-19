@@ -1,14 +1,36 @@
 import { useState } from "react";
-import { ArrowRight, Plus, CreditCard, Banknote, Wallet, PiggyBank } from "lucide-react";
+import { 
+  ArrowRight, 
+  Plus, 
+  CreditCard, 
+  Banknote, 
+  Wallet, 
+  PiggyBank,
+  Building2,
+  TrendingUp,
+  FileText,
+  ChevronDown,
+  ChevronUp
+} from "lucide-react";
 import { TopBar } from "../components/TopBar";
 import { NavigationDrawer } from "../components/NavigationDrawer";
 import { FAB } from "../components/FAB";
+import { AddAccountSheet, AccountFormData } from "../components/AddAccountSheet";
 
-interface Account {
+interface IndividualAccount {
   id: string;
   name: string;
   balance: number;
-  icon: "card" | "cash" | "wallet" | "savings";
+  details?: string; // For credit cards, loans, investments
+}
+
+interface AccountCategory {
+  id: string;
+  name: string;
+  type: "asset" | "liability";
+  icon: "cash" | "checking" | "savings" | "credit" | "investment" | "loan";
+  total: number;
+  accounts: IndividualAccount[];
 }
 
 interface CuentasScreenProps {
@@ -17,23 +39,125 @@ interface CuentasScreenProps {
   isDark: boolean;
 }
 
-const mockAccounts: Account[] = [
-  { id: "1", name: "Tarjeta Principal", balance: 5420.50, icon: "card" },
-  { id: "2", name: "Efectivo", balance: 1250.00, icon: "cash" },
-  { id: "3", name: "Cuenta Digital", balance: 8934.25, icon: "wallet" },
-  { id: "4", name: "Ahorros", balance: 15000.00, icon: "savings" },
+const mockCategories: AccountCategory[] = [
+  {
+    id: "1",
+    name: "Cash",
+    type: "asset",
+    icon: "cash",
+    total: 2500.00,
+    accounts: [
+      { id: "1-1", name: "Cartera", balance: 1250.00 },
+      { id: "1-2", name: "Efectivo Casa", balance: 1250.00 },
+    ],
+  },
+  {
+    id: "2",
+    name: "Checking",
+    type: "asset",
+    icon: "checking",
+    total: 8934.25,
+    accounts: [
+      { id: "2-1", name: "Banco Nómina", balance: 8934.25 },
+    ],
+  },
+  {
+    id: "3",
+    name: "Savings",
+    type: "asset",
+    icon: "savings",
+    total: 15000.00,
+    accounts: [
+      { id: "3-1", name: "Ahorro Meta", balance: 10000.00 },
+      { id: "3-2", name: "Fondo Emergencia", balance: 5000.00 },
+    ],
+  },
+  {
+    id: "4",
+    name: "Credit",
+    type: "liability",
+    icon: "credit",
+    total: 5420.50,
+    accounts: [
+      { 
+        id: "4-1", 
+        name: "Tarjeta Azul", 
+        balance: 3420.50,
+        details: "Día de corte: 15 · Pago límite: 22"
+      },
+      { 
+        id: "4-2", 
+        name: "Tarjeta Oro", 
+        balance: 2000.00,
+        details: "Día de corte: 10 · Pago límite: 18"
+      },
+    ],
+  },
+  {
+    id: "5",
+    name: "Investment",
+    type: "asset",
+    icon: "investment",
+    total: 3565.50,
+    accounts: [
+      { 
+        id: "5-1", 
+        name: "Crypto Portfolio", 
+        balance: 2565.50,
+        details: "Broker: Binance · Spot"
+      },
+      { 
+        id: "5-2", 
+        name: "Acciones", 
+        balance: 1000.00,
+        details: "Broker: GBM · Renta Variable"
+      },
+    ],
+  },
+  {
+    id: "6",
+    name: "Loan",
+    type: "liability",
+    icon: "loan",
+    total: 1500.00,
+    accounts: [
+      { 
+        id: "6-1", 
+        name: "Préstamo Personal", 
+        balance: 1500.00,
+        details: "Mensualidad: $500 · Próximo pago: 05/12"
+      },
+    ],
+  },
 ];
 
-const accountIcons = {
-  card: CreditCard,
+const categoryIcons = {
   cash: Banknote,
-  wallet: Wallet,
+  checking: Building2,
   savings: PiggyBank,
+  credit: CreditCard,
+  investment: TrendingUp,
+  loan: FileText,
 };
 
 export function CuentasScreen({ onThemeToggle, onNavigate, isDark }: CuentasScreenProps) {
   const [isNavDrawerOpen, setIsNavDrawerOpen] = useState(false);
-  const totalBalance = mockAccounts.reduce((sum, account) => sum + account.balance, 0);
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [isAddAccountSheetOpen, setIsAddAccountSheetOpen] = useState(false);
+  
+  const totalAssets = mockCategories
+    .filter(cat => cat.type === "asset")
+    .reduce((sum, cat) => sum + cat.total, 0);
+  
+  const totalLiabilities = mockCategories
+    .filter(cat => cat.type === "liability")
+    .reduce((sum, cat) => sum + cat.total, 0);
+  
+  const netWorth = totalAssets - totalLiabilities;
+
+  const handleCategoryToggle = (categoryId: string) => {
+    setExpandedCategory(expandedCategory === categoryId ? null : categoryId);
+  };
 
   const handleAccountClick = (accountId: string) => {
     // TODO: Navigate to account details
@@ -46,8 +170,7 @@ export function CuentasScreen({ onThemeToggle, onNavigate, isDark }: CuentasScre
   };
 
   const handleFABClick = () => {
-    // TODO: Open new account form
-    console.log("Add new account");
+    setIsAddAccountSheetOpen(true);
   };
 
 
@@ -81,16 +204,44 @@ export function CuentasScreen({ onThemeToggle, onNavigate, isDark }: CuentasScre
         style={{ scrollbarGutter: 'stable' }}
       >
         <div className="space-y-4">
-          {/* Total Balance Header */}
+          {/* Net Worth Header */}
           <div className="pb-4">
             <div className="bg-gradient-to-br from-brand to-brand/80 rounded-2xl p-5 shadow-lg">
-              <p className="caption text-white/80 mb-1">Total:</p>
+              <h2 className="text-[14px] leading-[20px] text-white/80 text-center mb-1">
+                Patrimonio neto
+              </h2>
               <p 
-                className="text-[32px] leading-[40px] text-white"
+                className="text-[32px] leading-[40px] text-white text-center mb-4"
                 style={{ fontVariantNumeric: 'tabular-nums' }}
               >
-                ${totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                ${netWorth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="text-center">
+                  <p className="text-[12px] leading-[16px] text-white/70 mb-1">
+                    Activos
+                  </p>
+                  <p 
+                    className="text-[20px] leading-[28px] text-ok"
+                    style={{ fontVariantNumeric: 'tabular-nums' }}
+                  >
+                    ${totalAssets.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </div>
+                
+                <div className="text-center">
+                  <p className="text-[12px] leading-[16px] text-white/70 mb-1">
+                    Pasivos
+                  </p>
+                  <p 
+                    className="text-[20px] leading-[28px] text-error"
+                    style={{ fontVariantNumeric: 'tabular-nums' }}
+                  >
+                    ${totalLiabilities.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -137,34 +288,84 @@ export function CuentasScreen({ onThemeToggle, onNavigate, isDark }: CuentasScre
 
             <div className="bg-card-custom rounded-2xl border border-divider overflow-hidden shadow-sm">
               <div className="divide-y divide-divider">
-                {mockAccounts.map((account) => {
-                  const Icon = accountIcons[account.icon];
+                {mockCategories.map((category) => {
+                  const Icon = categoryIcons[category.icon];
                   return (
-                    <button
-                      key={account.id}
-                      onClick={() => handleAccountClick(account.id)}
-                      className="w-full flex items-center gap-3 p-4 hover:bg-surface/50 transition-colors"
-                    >
-                      <div className="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center">
-                        <Icon className="w-5 h-5 text-brand" />
-                      </div>
-                      
-                      <div className="flex-1 min-w-0 text-left">
-                        <p className="text-[16px] leading-[24px] text-text-primary truncate">
-                          {account.name}
-                        </p>
-                      </div>
+                    <div key={category.id}>
+                      <button
+                        onClick={() => handleCategoryToggle(category.id)}
+                        className="w-full flex items-center gap-3 p-4 hover:bg-surface/50 transition-colors"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center flex-shrink-0">
+                          <Icon className="w-5 h-5 text-brand" />
+                        </div>
+                        
+                        <div className="flex-1 min-w-0 text-left">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <p className="text-[16px] leading-[24px] text-text-primary">
+                              {category.name}
+                            </p>
+                            <span 
+                              className={`text-[10px] leading-[14px] px-2 py-0.5 rounded-full ${
+                                category.type === "asset" 
+                                  ? "bg-ok/10 text-ok" 
+                                  : "bg-error/10 text-error"
+                              }`}
+                            >
+                              {category.type === "asset" ? "Activo" : "Pasivo"}
+                            </span>
+                          </div>
+                          <p className="text-[12px] leading-[16px] text-text-secondary">
+                            Total: ${category.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </p>
+                        </div>
 
-                      <div className="flex items-center gap-2">
-                        <span 
-                          className="text-[16px] leading-[24px] text-text-primary"
-                          style={{ fontVariantNumeric: 'tabular-nums' }}
-                        >
-                          ${account.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                        <ArrowRight className="w-4 h-4 text-text-secondary" />
-                      </div>
-                    </button>
+                        <div className="flex items-center flex-shrink-0">
+                          {expandedCategory === category.id ? (
+                            <ChevronUp className="w-4 h-4 text-text-secondary" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4 text-text-secondary" />
+                          )}
+                        </div>
+                      </button>
+
+                      {expandedCategory === category.id && (
+                        <div className="bg-surface/30">
+                          <div className="divide-y divide-divider/50">
+                            {category.accounts.map((account) => {
+                              return (
+                                <button
+                                  key={account.id}
+                                  onClick={() => handleAccountClick(account.id)}
+                                  className="w-full flex items-center gap-3 px-4 py-3 pl-14 hover:bg-surface/60 transition-colors"
+                                >
+                                  <div className="flex-1 min-w-0 text-left">
+                                    <p className="text-[14px] leading-[20px] text-text-primary truncate">
+                                      {account.name}
+                                    </p>
+                                    {account.details && (
+                                      <p className="text-[11px] leading-[16px] text-text-secondary mt-0.5">
+                                        {account.details}
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center gap-2 flex-shrink-0">
+                                    <span 
+                                      className="text-[14px] leading-[20px] text-text-primary"
+                                      style={{ fontVariantNumeric: 'tabular-nums' }}
+                                    >
+                                      ${account.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </span>
+                                    <ArrowRight className="w-4 h-4 text-text-secondary" />
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -175,6 +376,17 @@ export function CuentasScreen({ onThemeToggle, onNavigate, isDark }: CuentasScre
 
       {/* FAB */}
       <FAB onClick={handleFABClick} />
+
+      {/* Add Account Sheet */}
+      <AddAccountSheet
+        isOpen={isAddAccountSheetOpen}
+        onClose={() => setIsAddAccountSheetOpen(false)}
+        onSave={(formData: AccountFormData) => {
+          // Handle form submission
+          console.log("New account data:", formData);
+          setIsAddAccountSheetOpen(false);
+        }}
+      />
     </div>
   );
 }

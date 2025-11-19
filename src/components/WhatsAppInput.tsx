@@ -168,7 +168,7 @@ export function WhatsAppInput({
   };
 
   return (
-    <div className="px-4 py-3">
+    <div className="px-3 py-3">
       {/* Recording Overlay */}
       {isRecording && (
         <div className="fixed inset-0 bg-bg/95 z-50 flex items-center justify-center">
@@ -249,7 +249,7 @@ export function WhatsAppInput({
 
       {/* Input Container - Full Width with Integrated Button */}
       <div
-        className={`flex items-center gap-3 px-3 py-2 rounded-full bg-surface ${
+        className={`flex items-center gap-2 pl-3 pr-3 py-2 rounded-full bg-surface ${
           state === "error" ? "ring-2 ring-err" : ""
         }`}
         style={{ minHeight: '56px' }}
@@ -270,11 +270,11 @@ export function WhatsAppInput({
           onKeyPress={handleKeyPress}
           placeholder={placeholder}
           disabled={isDisabled}
-          className="flex-1 bg-transparent text-text-primary placeholder:text-text-secondary outline-none text-[16px] leading-[24px]"
+          className="flex-1 bg-transparent text-text-primary placeholder:text-text-secondary outline-none text-[16px] leading-[24px] min-w-0"
         />
 
         {/* Inline Action Icons */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-0.5 flex-shrink-0">
           <button
             onClick={handleAttachment}
             disabled={isDisabled}

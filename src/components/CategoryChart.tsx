@@ -18,15 +18,15 @@ export function CategoryChart({ type, chartType, data, total }: CategoryChartPro
   const title = type === "income" ? "Ingresos" : "Gastos";
   
   const renderDonutChart = () => (
-    <div className="relative w-full h-[180px] flex items-center justify-center p-4">
+    <div className="relative w-full h-[230px] flex items-center justify-center p-4">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
             data={data}
             cx="50%"
             cy="50%"
-            innerRadius={35}
-            outerRadius={55}
+            innerRadius={45}
+            outerRadius={70}
             paddingAngle={2}
             dataKey="value"
           >
@@ -37,7 +37,7 @@ export function CategoryChart({ type, chartType, data, total }: CategoryChartPro
         </PieChart>
       </ResponsiveContainer>
       <div className="absolute inset-0 flex items-center justify-center flex-col">
-        <span className="text-[20px] leading-[28px] text-text-primary">
+        <span className="text-[24px] leading-[32px] text-text-primary">
           ${total.toFixed(0)}
         </span>
         <span className="caption text-text-secondary">Total</span>
@@ -46,7 +46,7 @@ export function CategoryChart({ type, chartType, data, total }: CategoryChartPro
   );
 
   const renderLineChart = () => (
-    <div className="w-full h-[180px] p-2">
+    <div className="w-full h-[230px] p-2">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
           <XAxis 
@@ -71,7 +71,7 @@ export function CategoryChart({ type, chartType, data, total }: CategoryChartPro
   );
 
   const renderBarChart = () => (
-    <div className="w-full h-[180px] p-2">
+    <div className="w-full h-[230px] p-2">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
           <XAxis 
@@ -94,13 +94,13 @@ export function CategoryChart({ type, chartType, data, total }: CategoryChartPro
   );
 
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm overflow-hidden">
+    <div className="bg-bg rounded-2xl p-4 shadow-sm overflow-hidden border border-divider/20">
       <h4 className="caption text-text-secondary mb-1">
         {title}
       </h4>
       
       {data.length === 0 ? (
-        <div className="w-full h-[180px] flex items-center justify-center">
+        <div className="w-full h-[230px] flex items-center justify-center">
           <span className="caption text-text-secondary">Sin datos</span>
         </div>
       ) : (

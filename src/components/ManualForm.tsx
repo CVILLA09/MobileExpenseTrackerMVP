@@ -41,6 +41,7 @@ export function ManualForm({ isOpen, onClose, onSave, initialData, accounts = []
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isAccountSheetOpen, setIsAccountSheetOpen] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
 
   // Resetear categoría si no es válida para el tipo actual
   useEffect(() => {
@@ -86,6 +87,22 @@ export function ManualForm({ isOpen, onClose, onSave, initialData, accounts = []
     categoryIcon: (acc.categoryIcon as any) || "cash",
     balance: acc.balance || 0,
   }));
+
+  const groupedAccounts = accountOptions.reduce<Record<string, AccountOption[]>>((acc, account) => {
+    const category = account.categoryName || "Otras";
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(account);
+    return acc;
+  }, {});
+
+  useEffect(() => {
+    if (selectedAccount) {
+      const category = selectedAccount.categoryName || "Otras";
+      setExpandedCategories(prev => ({ ...prev, [category]: true }));
+    }
+  }, [selectedAccount]);
 
   if (!isOpen) return null;
 
@@ -280,45 +297,87 @@ export function ManualForm({ isOpen, onClose, onSave, initialData, accounts = []
             </div>
 
             <div className="divide-y divide-divider">
-              {accountOptions.map((account) => {
-                const Icon = categoryIcons[account.categoryIcon] || Banknote;
-                const isSelected = account.id === formData.account_id;
-                
-                return (
-                  <button
-                    key={account.id}
-                    type="button"
-                    onClick={() => {
-                      setFormData({ ...formData, account_id: account.id });
-                      setIsAccountSheetOpen(false);
-                    }}
-                    className="w-full flex items-center gap-3 p-4 hover:bg-surface/50 transition-colors text-left"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center flex-shrink-0">
-                      <Icon className="w-5 h-5 text-brand" />
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[16px] leading-[24px] text-text-primary truncate">
-                        {account.name}
-                      </p>
-                      <p className="caption text-text-secondary">
-                        {account.categoryName}
-                      </p>
-                    </div>
+              {Object.entries(groupedAccounts).map(([categoryName, accountsInCategory]) => {
+                const categoryIcon = accountsInCategory[0]?.categoryIcon || "cash";
+                const CategoryIcon = categoryIcons[categoryIcon] || Banknote;
+                const isExpanded = expandedCategories[categoryName];
 
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      <span 
-                        className="text-[14px] leading-[20px] text-text-secondary"
-                        style={{ fontVariantNumeric: 'tabular-nums' }}
-                      >
-                        ${account.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </span>
-                      {isSelected && (
-                        <Check className="w-5 h-5 text-brand" />
-                      )}
-                    </div>
-                  </button>
+                return (
+                  <div key={categoryName} className="w-full">
+                    <button
+                      type="button"
+                      className="w-full flex items-center justify-between p-4"
+                      onClick={() =>
+                        setExpandedCategories(prev => ({
+                          ...prev,
+                          [categoryName]: !prev[categoryName],
+                        }))
+                      }
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center flex-shrink-0">
+                          <CategoryIcon className="w-5 h-5 text-brand" />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-[16px] leading-[24px] text-text-primary">{categoryName}</p>
+                          <p className="caption text-text-secondary">
+                            {accountsInCategory.length} {accountsInCategory.length === 1 ? "cuenta" : "cuentas"}
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronDown
+                        className={`w-5 h-5 text-text-secondary transition-transform ${
+                          isExpanded ? "rotate-180" : ""
+                        }`}
+                      />
+                    </button>
+
+                    {isExpanded && (
+                      <div className="bg-surface/30">
+                        {accountsInCategory.map((account, index) => {
+                          const Icon = categoryIcons[account.categoryIcon] || Banknote;
+                          const isSelected = account.id === formData.account_id;
+
+                          return (
+                            <button
+                              key={account.id}
+                              type="button"
+                              onClick={() => {
+                                setFormData({ ...formData, account_id: account.id });
+                                setIsAccountSheetOpen(false);
+                              }}
+                              className={`w-full flex items-center gap-3 px-4 py-3 transition-colors text-left ${
+                                index !== accountsInCategory.length - 1 ? "border-b border-divider/80" : ""
+                              }`}
+                            >
+                              <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center flex-shrink-0">
+                                <Icon className="w-5 h-5 text-brand" />
+                              </div>
+
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[16px] leading-[24px] text-text-primary truncate">
+                                  {account.name}
+                                </p>
+                              </div>
+
+                              <div className="flex items-center gap-3 flex-shrink-0">
+                                <span
+                                  className="text-[14px] leading-[20px] text-text-secondary"
+                                  style={{ fontVariantNumeric: "tabular-nums" }}
+                                >
+                                  ${account.balance.toLocaleString("en-US", {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                  })}
+                                </span>
+                                {isSelected && <Check className="w-5 h-5 text-brand" />}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>

@@ -26,98 +26,6 @@ interface CuentasScreenProps {
   onUpdateAccountCategories: (categories: AccountCategory[]) => void;
 }
 
-const mockCategories: AccountCategory[] = [
-  {
-    id: "1",
-    name: "Cash",
-    type: "asset",
-    icon: "cash",
-    total: 2500.00,
-    accounts: [
-      { id: "1-1", name: "Cartera", balance: 1250.00 },
-      { id: "1-2", name: "Efectivo Casa", balance: 1250.00 },
-    ],
-  },
-  {
-    id: "2",
-    name: "Checking",
-    type: "asset",
-    icon: "checking",
-    total: 8934.25,
-    accounts: [
-      { id: "2-1", name: "Banco Nómina", balance: 8934.25 },
-    ],
-  },
-  {
-    id: "3",
-    name: "Savings",
-    type: "asset",
-    icon: "savings",
-    total: 15000.00,
-    accounts: [
-      { id: "3-1", name: "Ahorro Meta", balance: 10000.00 },
-      { id: "3-2", name: "Fondo Emergencia", balance: 5000.00 },
-    ],
-  },
-  {
-    id: "4",
-    name: "Credit",
-    type: "liability",
-    icon: "credit",
-    total: 5420.50,
-    accounts: [
-      { 
-        id: "4-1", 
-        name: "Tarjeta Azul", 
-        balance: 3420.50,
-        details: "Día de corte: 15 · Pago límite: 22"
-      },
-      { 
-        id: "4-2", 
-        name: "Tarjeta Oro", 
-        balance: 2000.00,
-        details: "Día de corte: 10 · Pago límite: 18"
-      },
-    ],
-  },
-  {
-    id: "5",
-    name: "Investment",
-    type: "asset",
-    icon: "investment",
-    total: 3565.50,
-    accounts: [
-      { 
-        id: "5-1", 
-        name: "Crypto Portfolio", 
-        balance: 2565.50,
-        details: "Broker: Binance · Spot"
-      },
-      { 
-        id: "5-2", 
-        name: "Acciones", 
-        balance: 1000.00,
-        details: "Broker: GBM · Renta Variable"
-      },
-    ],
-  },
-  {
-    id: "6",
-    name: "Loan",
-    type: "liability",
-    icon: "loan",
-    total: 1500.00,
-    accounts: [
-      { 
-        id: "6-1", 
-        name: "Préstamo Personal", 
-        balance: 1500.00,
-        details: "Mensualidad: $500 · Próximo pago: 05/12"
-      },
-    ],
-  },
-];
-
 const categoryIcons = {
   cash: Banknote,
   checking: Building2,
@@ -327,8 +235,8 @@ export function CuentasScreen({
                   <p className="text-[12px] leading-[16px] text-white/70 mb-1">
                     Pasivos
                   </p>
-                  <p 
-                    className="text-[20px] leading-[28px] text-error"
+                  <p
+                    className="text-[20px] leading-[28px] text-err"
                     style={{ fontVariantNumeric: 'tabular-nums' }}
                   >
                     ${totalLiabilities.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -398,11 +306,11 @@ export function CuentasScreen({
                             <p className="text-[16px] leading-[24px] text-text-primary">
                               {category.name}
                             </p>
-                            <span 
+                            <span
                               className={`text-[10px] leading-[14px] px-2 py-0.5 rounded-full ${
-                                category.type === "asset" 
-                                  ? "bg-ok/10 text-ok" 
-                                  : "bg-error/10 text-error"
+                                category.type === "asset"
+                                  ? "bg-ok/10 text-ok"
+                                  : "bg-err/10 text-err"
                               }`}
                             >
                               {category.type === "asset" ? "Activo" : "Pasivo"}

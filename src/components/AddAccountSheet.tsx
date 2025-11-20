@@ -7,38 +7,50 @@ export interface AccountFormData {
   name: string;
   balance: number;
   currency: string;
-  
+
   // Cash
   description?: string;
-  
+
   // Checking
   bank?: string;
   accountNumber?: string;
-  
+
   // Savings
   expectedYield?: number;
   goal?: string;
-  
-  // Credit
+
+  // Credit Card
   creditLimit?: number;
   availableCredit?: number;
   billingDay?: number;
   paymentDueDay?: number;
-  
+
   // Investment
+  investmentSubtype?: "FIXED" | "VARIABLE";
   broker?: string;
-  investmentType?: string;
+  investmentType?: string; // Acciones, Fondos, Cripto, Bonos, Otro
   annualInterest?: number;
   isLocked?: boolean;
   lockedUntil?: string;
-  
+  // For VARIABLE investments
+  quantity?: number;
+  pricePerUnit?: number;
+
   // Loan
-  loanType?: string;
+  loanSubtype?: "Personal" | "Institutional";
+  loanType?: string; // Personal, Auto, Hipotecario, Otro
   interestRate?: number;
+  originalAmount?: number; // Monto original del préstamo
   paymentAmount?: number;
   paymentFrequency?: string;
   nextPaymentDate?: string;
   lenderInfo?: string;
+  // For Personal loans
+  paymentMode?: "ONE_TIME" | "INSTALLMENTS";
+  totalInstallments?: number;
+  dueDate?: string;
+  // For Institutional loans
+  loanTerm?: number; // in months
 }
 
 interface AddAccountSheetProps {

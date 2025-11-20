@@ -16,7 +16,11 @@ import { TopBar } from "../components/TopBar";
 import { NavigationDrawer } from "../components/NavigationDrawer";
 import { FAB } from "../components/FAB";
 import { AddAccountSheet, AccountFormData } from "../components/AddAccountSheet";
+import { SwipeableAccountRow } from "../components/SwipeableAccountRow";
+import { EditAccountSheet } from "../components/EditAccountSheet";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { IndividualAccount, AccountCategory } from "../App";
+import { toast } from "sonner@2.0.3";
 
 interface CuentasScreenProps {
   onThemeToggle: () => void;
@@ -45,6 +49,11 @@ export function CuentasScreen({
   const [isNavDrawerOpen, setIsNavDrawerOpen] = useState(false);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [isAddAccountSheetOpen, setIsAddAccountSheetOpen] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<IndividualAccount | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [accountToDelete, setAccountToDelete] = useState<IndividualAccount | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletedAccount, setDeletedAccount] = useState<{ account: IndividualAccount; categoryId: string } | null>(null);
   
   const totalAssets = accountCategories
     .filter(cat => cat.type === "asset")
@@ -63,6 +72,129 @@ export function CuentasScreen({
   const handleAccountClick = (accountId: string) => {
     // TODO: Navigate to account details
     console.log("Account clicked:", accountId);
+  };
+
+  // Handler for tap on account row - opens edit modal
+  const handleAccountTap = (account: IndividualAccount) => {
+    setEditingAccount(account);
+    setIsEditModalOpen(true);
+  };
+
+  // Handler for delete button on swipe reveal
+  const handleAccountDelete = (account: IndividualAccount) => {
+    setAccountToDelete(account);
+    setIsDeleteDialogOpen(true);
+  };
+
+  // Handler for confirming delete
+  const handleConfirmDelete = () => {
+    if (!accountToDelete) return;
+
+    // Find the category that contains this account
+    const categoryWithAccount = accountCategories.find(cat =>
+      cat.accounts.some(acc => acc.id === accountToDelete.id)
+    );
+
+    if (!categoryWithAccount) return;
+
+    // Remove account from category
+    const updatedCategories = accountCategories.map(cat => {
+      if (cat.id !== categoryWithAccount.id) return cat;
+
+      // Filter out the account to delete
+      const filteredAccounts = cat.accounts.filter(
+        acc => acc.id !== accountToDelete.id
+      );
+
+      // Recalculate total
+      const updatedTotal = filteredAccounts.reduce((sum, acc) => sum + acc.balance, 0);
+
+      return {
+        ...cat,
+        accounts: filteredAccounts,
+        total: updatedTotal,
+      };
+    });
+
+    // Update state
+    onUpdateAccountCategories(updatedCategories);
+
+    // Store deleted account for undo
+    setDeletedAccount({ account: accountToDelete, categoryId: categoryWithAccount.id });
+
+    // Show success toast with undo
+    toast.success("Cuenta eliminada", {
+      description: `${accountToDelete.name} ha sido eliminada`,
+      action: {
+        label: "Deshacer",
+        onClick: () => handleUndoDelete(),
+      },
+      duration: 8000,
+    });
+
+    // Close dialog
+    setIsDeleteDialogOpen(false);
+    setAccountToDelete(null);
+  };
+
+  // Handler for undo delete
+  const handleUndoDelete = () => {
+    if (!deletedAccount) return;
+
+    const { account, categoryId } = deletedAccount;
+
+    // Restore the account
+    const updatedCategories = accountCategories.map(cat => {
+      if (cat.id !== categoryId) return cat;
+
+      const updatedAccounts = [...cat.accounts, account];
+      const updatedTotal = updatedAccounts.reduce((sum, acc) => sum + acc.balance, 0);
+
+      return {
+        ...cat,
+        accounts: updatedAccounts,
+        total: updatedTotal,
+      };
+    });
+
+    onUpdateAccountCategories(updatedCategories);
+    setDeletedAccount(null);
+
+    toast.success("Cuenta restaurada", {
+      description: `${account.name} ha sido restaurada`,
+    });
+  };
+
+  // Handler for updating edited account
+  const handleUpdateAccount = (
+    accountId: string,
+    updates: { name: string; balance: number; details?: string }
+  ) => {
+    const updatedCategories = accountCategories.map(cat => {
+      const accountIndex = cat.accounts.findIndex(acc => acc.id === accountId);
+
+      if (accountIndex === -1) return cat;
+
+      const updatedAccounts = [...cat.accounts];
+      updatedAccounts[accountIndex] = {
+        ...updatedAccounts[accountIndex],
+        ...updates,
+      };
+
+      const updatedTotal = updatedAccounts.reduce((sum, acc) => sum + acc.balance, 0);
+
+      return {
+        ...cat,
+        accounts: updatedAccounts,
+        total: updatedTotal,
+      };
+    });
+
+    onUpdateAccountCategories(updatedCategories);
+
+    toast.success("Cuenta actualizada", {
+      description: `${updates.name} ha sido actualizada correctamente`,
+    });
   };
 
   const handleQuickAction = (action: string) => {
@@ -335,32 +467,12 @@ export function CuentasScreen({
                           <div className="divide-y divide-divider/50">
                             {category.accounts.map((account) => {
                               return (
-                                <button
+                                <SwipeableAccountRow
                                   key={account.id}
-                                  onClick={() => handleAccountClick(account.id)}
-                                  className="w-full flex items-center gap-3 px-4 py-3 pl-14 hover:bg-surface/60 transition-colors"
-                                >
-                                  <div className="flex-1 min-w-0 text-left">
-                                    <p className="text-[14px] leading-[20px] text-text-primary truncate">
-                                      {account.name}
-                                    </p>
-                                    {account.details && (
-                                      <p className="text-[11px] leading-[16px] text-text-secondary mt-0.5">
-                                        {account.details}
-                                      </p>
-                                    )}
-                                  </div>
-
-                                  <div className="flex items-center gap-2 flex-shrink-0">
-                                    <span 
-                                      className="text-[14px] leading-[20px] text-text-primary"
-                                      style={{ fontVariantNumeric: 'tabular-nums' }}
-                                    >
-                                      ${account.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    </span>
-                                    <ArrowRight className="w-4 h-4 text-text-secondary" />
-                                  </div>
-                                </button>
+                                  account={account}
+                                  onTap={handleAccountTap}
+                                  onDelete={handleAccountDelete}
+                                />
                               );
                             })}
                           </div>
@@ -383,6 +495,32 @@ export function CuentasScreen({
         isOpen={isAddAccountSheetOpen}
         onClose={() => setIsAddAccountSheetOpen(false)}
         onSave={handleSaveAccount}
+      />
+
+      {/* Edit Account Sheet */}
+      <EditAccountSheet
+        isOpen={isEditModalOpen}
+        account={editingAccount}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingAccount(null);
+        }}
+        onSave={handleUpdateAccount}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={isDeleteDialogOpen}
+        title="Confirmar eliminación"
+        message="Esta cuenta será marcada como inactiva y no aparecerá en la vista principal. ¿Deseas continuar?"
+        confirmLabel="Confirmar eliminación"
+        cancelLabel="Cancelar"
+        variant="danger"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          setIsDeleteDialogOpen(false);
+          setAccountToDelete(null);
+        }}
       />
     </div>
   );

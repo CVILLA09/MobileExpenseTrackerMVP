@@ -228,7 +228,20 @@ export default function App() {
   const [editingTransaction, setEditingTransaction] = useState<TransactionData | null>(null);
   const [isDark, setIsDark] = useState(true);
   const [categories, setCategories] = useState<Category[]>(defaultCategories);
-  const [accountCategories, setAccountCategories] = useState<AccountCategory[]>(initialAccountCategories);
+
+  // Load account categories from localStorage or use initial data
+  const [accountCategories, setAccountCategories] = useState<AccountCategory[]>(() => {
+    const stored = localStorage.getItem('accountCategories');
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch (e) {
+        console.error('Error parsing stored account categories:', e);
+        return initialAccountCategories;
+      }
+    }
+    return initialAccountCategories;
+  });
 
   // Helper para actualizar saldo de cuenta
   const updateAccountBalance = (
@@ -273,6 +286,11 @@ export default function App() {
       });
     });
   };
+
+  // Save account categories to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('accountCategories', JSON.stringify(accountCategories));
+  }, [accountCategories]);
 
   // Apply dark mode
   useEffect(() => {

@@ -24,9 +24,12 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
+      console.log('🎯 Backdrop clicked outside dialog');
       onCancel();
     }
   };
+
+  console.log('🔄 ConfirmDialog render, isOpen:', isOpen);
 
   return (
     <AnimatePresence>
@@ -72,13 +75,21 @@ export function ConfirmDialog({
             {/* Actions */}
             <div className="flex gap-3 p-4 border-t border-divider">
               <button
-                onClick={onCancel}
+                onClick={(e) => {
+                  console.log('❌ Cancel clicked');
+                  e.stopPropagation();
+                  onCancel();
+                }}
                 className="flex-1 px-4 py-2 rounded-xl bg-surface border border-divider text-text-primary hover:bg-surface/80 transition-colors"
               >
                 {cancelLabel}
               </button>
               <button
-                onClick={onConfirm}
+                onClick={(e) => {
+                  console.log('✅ Confirm clicked');
+                  e.stopPropagation();
+                  onConfirm();
+                }}
                 className={`flex-1 px-4 py-2 rounded-xl text-white transition-colors ${
                   variant === "danger"
                     ? "bg-destructive hover:bg-destructive/90"

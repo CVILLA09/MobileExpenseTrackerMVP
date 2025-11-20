@@ -81,6 +81,12 @@ export function EditAccountSheet({ isOpen, account, onClose, onSave }: EditAccou
             transition={{ duration: 0.2 }}
             className="fixed inset-0 bg-black/50 z-[80]"
             onClick={handleCancel}
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onPointerMove={(e) => e.stopPropagation()}
+            onPointerUp={(e) => e.stopPropagation()}
           />
 
           {/* Bottom Sheet */}
@@ -94,6 +100,7 @@ export function EditAccountSheet({ isOpen, account, onClose, onSave }: EditAccou
             dragElastic={{ top: 0, bottom: 0.2 }}
             onDragEnd={handleDragEnd}
             className="fixed bottom-0 left-0 right-0 bg-card-custom rounded-t-[28px] shadow-2xl z-[90] max-h-[85vh] overflow-hidden flex flex-col max-w-[390px] mx-auto"
+            onClick={(e) => e.stopPropagation()}
           >
             {/* Drag Handle */}
             <div className="w-full flex justify-center pt-3 pb-2">

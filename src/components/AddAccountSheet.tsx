@@ -59,6 +59,34 @@ interface AddAccountSheetProps {
   onSave: (data: AccountFormData) => void;
 }
 
+// Auto-calculation helper functions
+const calculateCreditCardBalance = (creditLimit: number, availableCredit: number): number => {
+  return creditLimit - availableCredit;
+};
+
+const calculateVariableInvestmentBalance = (quantity: number, pricePerUnit: number): number => {
+  return quantity * pricePerUnit;
+};
+
+const calculateLoanPayment = (
+  principal: number,
+  annualRate: number,
+  termMonths: number
+): number => {
+  // Monthly payment formula: P * [r(1+r)^n] / [(1+r)^n - 1]
+  // where r = monthly interest rate, n = number of months
+  const monthlyRate = annualRate / 100 / 12;
+  if (monthlyRate === 0) return principal / termMonths;
+
+  const power = Math.pow(1 + monthlyRate, termMonths);
+  const payment = principal * (monthlyRate * power) / (power - 1);
+  return Math.round(payment * 100) / 100; // Round to 2 decimals
+};
+
+const calculatePersonalLoanInstallment = (originalAmount: number, totalInstallments: number): number => {
+  return originalAmount / totalInstallments;
+};
+
 const accountTypes = [
   {
     id: "cash" as const,
@@ -147,19 +175,81 @@ export function AddAccountSheet({ isOpen, onClose, onSave }: AddAccountSheetProp
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const newErrors: Record<string, string> = {};
-    
+
+    // Common validations
     if (!formData.name.trim()) {
       newErrors.name = "Ingresa un nombre para la cuenta";
     }
-    
-    if (formData.accountType === "credit_card" && !formData.creditLimit) {
-      newErrors.creditLimit = "Ingresa el límite de crédito";
+
+    // Credit Card validations
+    if (formData.accountType === "credit_card") {
+      if (!formData.creditLimit) {
+        newErrors.creditLimit = "Ingresa el límite de crédito";
+      }
+      if (formData.availableCredit === undefined) {
+        newErrors.availableCredit = "Ingresa el crédito disponible";
+      }
+      if (formData.creditLimit && formData.availableCredit !== undefined) {
+        if (formData.availableCredit > formData.creditLimit) {
+          newErrors.availableCredit = "El crédito disponible no puede ser mayor al límite";
+        }
+      }
     }
-    
-    if (formData.accountType === "loan" && !formData.interestRate) {
-      newErrors.interestRate = "Ingresa la tasa de interés";
+
+    // Investment validations
+    if (formData.accountType === "investment") {
+      if (!formData.investmentSubtype) {
+        newErrors.investmentSubtype = "Selecciona el tipo de inversión";
+      }
+
+      if (formData.investmentSubtype === "VARIABLE") {
+        if (!formData.quantity) {
+          newErrors.quantity = "Ingresa la cantidad";
+        }
+        if (!formData.pricePerUnit) {
+          newErrors.pricePerUnit = "Ingresa el precio por unidad";
+        }
+      }
+
+      if (formData.investmentSubtype === "FIXED" && formData.isLocked && !formData.lockedUntil) {
+        newErrors.lockedUntil = "Ingresa la fecha de desbloqueo";
+      }
+    }
+
+    // Loan validations
+    if (formData.accountType === "loan") {
+      if (!formData.loanSubtype) {
+        newErrors.loanSubtype = "Selecciona el tipo de préstamo";
+      }
+
+      if (!formData.originalAmount) {
+        newErrors.originalAmount = "Ingresa el monto original del préstamo";
+      }
+
+      if (formData.loanSubtype === "Personal") {
+        if (!formData.paymentMode) {
+          newErrors.paymentMode = "Selecciona la modalidad de pago";
+        }
+
+        if (formData.paymentMode === "ONE_TIME" && !formData.dueDate) {
+          newErrors.dueDate = "Ingresa la fecha de vencimiento";
+        }
+
+        if (formData.paymentMode === "INSTALLMENTS" && !formData.totalInstallments) {
+          newErrors.totalInstallments = "Ingresa el número de cuotas";
+        }
+      }
+
+      if (formData.loanSubtype === "Institutional") {
+        if (!formData.interestRate) {
+          newErrors.interestRate = "Ingresa la tasa de interés";
+        }
+        if (!formData.loanTerm) {
+          newErrors.loanTerm = "Ingresa el plazo del préstamo";
+        }
+      }
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -191,8 +281,25 @@ export function AddAccountSheet({ isOpen, onClose, onSave }: AddAccountSheetProp
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50">
-      <div className="bg-bg rounded-t-3xl w-full max-w-[390px] max-h-[90vh] overflow-y-auto">
+    <div
+      className="fixed inset-0 bg-black/50 flex items-end justify-center z-50"
+      onTouchStart={(e) => e.stopPropagation()}
+      onTouchMove={(e) => e.stopPropagation()}
+      onTouchEnd={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+      onPointerMove={(e) => e.stopPropagation()}
+      onPointerUp={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        // Close on backdrop click
+        if (e.target === e.currentTarget) {
+          handleClose();
+        }
+      }}
+    >
+      <div
+        className="bg-bg rounded-t-3xl w-full max-w-[390px] max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="sticky top-0 bg-bg border-b border-divider p-4 flex items-center justify-between">
           {step === "form" && (
             <button
@@ -458,7 +565,13 @@ export function AddAccountSheet({ isOpen, onClose, onSave }: AddAccountSheetProp
                       step="0.01"
                       value={formData.creditLimit || ""}
                       onChange={(e) => {
-                        setFormData({ ...formData, creditLimit: parseFloat(e.target.value) || undefined });
+                        const creditLimit = parseFloat(e.target.value) || undefined;
+                        const newFormData = { ...formData, creditLimit };
+                        // Auto-calculate balance if both creditLimit and availableCredit are present
+                        if (creditLimit && formData.availableCredit !== undefined) {
+                          newFormData.balance = calculateCreditCardBalance(creditLimit, formData.availableCredit);
+                        }
+                        setFormData(newFormData);
                         setErrors({ ...errors, creditLimit: "" });
                       }}
                       className={`w-full pl-8 pr-4 py-3 bg-surface text-text-primary rounded-2xl text-[20px] leading-[28px] outline-none ${
@@ -473,7 +586,7 @@ export function AddAccountSheet({ isOpen, onClose, onSave }: AddAccountSheetProp
                   )}
                 </div>
                 <div>
-                  <label className="caption text-text-secondary mb-2 block">Crédito disponible (opcional)</label>
+                  <label className="caption text-text-secondary mb-2 block">Crédito disponible</label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-primary text-[20px] leading-[28px]">
                       $
@@ -482,13 +595,35 @@ export function AddAccountSheet({ isOpen, onClose, onSave }: AddAccountSheetProp
                       type="number"
                       step="0.01"
                       value={formData.availableCredit || ""}
-                      onChange={(e) => setFormData({ ...formData, availableCredit: parseFloat(e.target.value) || undefined })}
-                      className="w-full pl-8 pr-4 py-3 bg-surface text-text-primary rounded-2xl text-[20px] leading-[28px] outline-none"
+                      onChange={(e) => {
+                        const availableCredit = parseFloat(e.target.value) || undefined;
+                        const newFormData = { ...formData, availableCredit };
+                        // Auto-calculate balance if both creditLimit and availableCredit are present
+                        if (availableCredit !== undefined && formData.creditLimit) {
+                          newFormData.balance = calculateCreditCardBalance(formData.creditLimit, availableCredit);
+                        }
+                        setFormData(newFormData);
+                        setErrors({ ...errors, availableCredit: "" });
+                      }}
+                      className={`w-full pl-8 pr-4 py-3 bg-surface text-text-primary rounded-2xl text-[20px] leading-[28px] outline-none ${
+                        errors.availableCredit ? "ring-2 ring-err" : ""
+                      }`}
                       placeholder="15,000.00"
                       style={{ minHeight: '44px', fontVariantNumeric: 'tabular-nums' }}
                     />
                   </div>
+                  {errors.availableCredit && (
+                    <p className="caption text-err mt-1">{errors.availableCredit}</p>
+                  )}
                 </div>
+                {formData.creditLimit && formData.availableCredit !== undefined && (
+                  <div className="p-3 bg-err/10 border border-err/20 rounded-2xl">
+                    <p className="caption text-text-secondary mb-1">Saldo adeudado calculado</p>
+                    <p className="text-[20px] leading-[28px] text-err font-medium" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                      ${formData.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="caption text-text-secondary mb-2 block">Día de corte</label>
@@ -524,6 +659,37 @@ export function AddAccountSheet({ isOpen, onClose, onSave }: AddAccountSheetProp
 
             {formData.accountType === "investment" && (
               <>
+                {/* Investment Subtype Selection */}
+                <div>
+                  <label className="caption text-text-secondary mb-2 block">Tipo de inversión</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, investmentSubtype: "FIXED" })}
+                      className={`p-3 rounded-2xl border transition-colors caption ${
+                        formData.investmentSubtype === "FIXED"
+                          ? "border-brand bg-brand/10 text-brand"
+                          : "border-divider text-text-secondary"
+                      }`}
+                      style={{ minHeight: '44px' }}
+                    >
+                      Renta Fija
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, investmentSubtype: "VARIABLE" })}
+                      className={`p-3 rounded-2xl border transition-colors caption ${
+                        formData.investmentSubtype === "VARIABLE"
+                          ? "border-brand bg-brand/10 text-brand"
+                          : "border-divider text-text-secondary"
+                      }`}
+                      style={{ minHeight: '44px' }}
+                    >
+                      Renta Variable
+                    </button>
+                  </div>
+                </div>
+
                 <div>
                   <label className="caption text-text-secondary mb-2 block">Broker / plataforma</label>
                   <input
@@ -535,8 +701,9 @@ export function AddAccountSheet({ isOpen, onClose, onSave }: AddAccountSheetProp
                     style={{ minHeight: '44px' }}
                   />
                 </div>
+
                 <div>
-                  <label className="caption text-text-secondary mb-2 block">Tipo de inversión</label>
+                  <label className="caption text-text-secondary mb-2 block">Categoría</label>
                   <div className="grid grid-cols-3 gap-2">
                     {["Acciones", "Fondos", "Cripto", "Bonos", "Otro"].map((type) => (
                       <button
@@ -555,51 +722,159 @@ export function AddAccountSheet({ isOpen, onClose, onSave }: AddAccountSheetProp
                     ))}
                   </div>
                 </div>
-                <div>
-                  <label className="caption text-text-secondary mb-2 block">Rendimiento anual estimado (opcional)</label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={formData.annualInterest || ""}
-                      onChange={(e) => setFormData({ ...formData, annualInterest: parseFloat(e.target.value) || undefined })}
-                      className="w-full px-4 pr-8 py-3 bg-surface text-text-primary rounded-2xl outline-none"
-                      placeholder="8.5"
-                      style={{ minHeight: '44px' }}
-                    />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary">%</span>
-                  </div>
-                </div>
-                <div>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.isLocked || false}
-                      onChange={(e) => setFormData({ ...formData, isLocked: e.target.checked, lockedUntil: e.target.checked ? formData.lockedUntil : undefined })}
-                      className="w-5 h-5 rounded border-divider text-brand focus:ring-brand"
-                    />
-                    <span className="caption text-text-primary">Bloqueado</span>
-                  </label>
-                </div>
-                {formData.isLocked && (
-                  <div>
-                    <label className="caption text-text-secondary mb-2 block">Bloqueado hasta</label>
-                    <input
-                      type="date"
-                      value={formData.lockedUntil || ""}
-                      onChange={(e) => setFormData({ ...formData, lockedUntil: e.target.value })}
-                      className="w-full px-4 py-3 bg-surface text-text-primary rounded-2xl outline-none"
-                      style={{ minHeight: '44px' }}
-                    />
-                  </div>
+
+                {/* FIXED Investment Fields */}
+                {formData.investmentSubtype === "FIXED" && (
+                  <>
+                    <div>
+                      <label className="caption text-text-secondary mb-2 block">Rendimiento anual</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={formData.annualInterest || ""}
+                          onChange={(e) => setFormData({ ...formData, annualInterest: parseFloat(e.target.value) || undefined })}
+                          className="w-full px-4 pr-8 py-3 bg-surface text-text-primary rounded-2xl outline-none"
+                          placeholder="8.5"
+                          style={{ minHeight: '44px' }}
+                        />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary">%</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={formData.isLocked || false}
+                          onChange={(e) => setFormData({ ...formData, isLocked: e.target.checked, lockedUntil: e.target.checked ? formData.lockedUntil : undefined })}
+                          className="w-5 h-5 rounded border-divider text-brand focus:ring-brand"
+                        />
+                        <span className="caption text-text-primary">Bloqueado</span>
+                      </label>
+                    </div>
+                    {formData.isLocked && (
+                      <div>
+                        <label className="caption text-text-secondary mb-2 block">Bloqueado hasta</label>
+                        <input
+                          type="date"
+                          value={formData.lockedUntil || ""}
+                          onChange={(e) => setFormData({ ...formData, lockedUntil: e.target.value })}
+                          className="w-full px-4 py-3 bg-surface text-text-primary rounded-2xl outline-none"
+                          style={{ minHeight: '44px' }}
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* VARIABLE Investment Fields */}
+                {formData.investmentSubtype === "VARIABLE" && (
+                  <>
+                    <div>
+                      <label className="caption text-text-secondary mb-2 block">Cantidad</label>
+                      <input
+                        type="number"
+                        step="0.0001"
+                        value={formData.quantity || ""}
+                        onChange={(e) => {
+                          const quantity = parseFloat(e.target.value) || undefined;
+                          const newFormData = { ...formData, quantity };
+                          // Auto-calculate balance if both quantity and pricePerUnit are present
+                          if (quantity && formData.pricePerUnit) {
+                            newFormData.balance = calculateVariableInvestmentBalance(quantity, formData.pricePerUnit);
+                          }
+                          setFormData(newFormData);
+                          setErrors({ ...errors, quantity: "" });
+                        }}
+                        className={`w-full px-4 py-3 bg-surface text-text-primary rounded-2xl outline-none ${
+                          errors.quantity ? "ring-2 ring-err" : ""
+                        }`}
+                        placeholder="10.5"
+                        style={{ minHeight: '44px' }}
+                      />
+                      {errors.quantity && (
+                        <p className="caption text-err mt-1">{errors.quantity}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="caption text-text-secondary mb-2 block">Precio por unidad</label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-primary text-[20px] leading-[28px]">
+                          $
+                        </span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={formData.pricePerUnit || ""}
+                          onChange={(e) => {
+                            const pricePerUnit = parseFloat(e.target.value) || undefined;
+                            const newFormData = { ...formData, pricePerUnit };
+                            // Auto-calculate balance if both quantity and pricePerUnit are present
+                            if (pricePerUnit && formData.quantity) {
+                              newFormData.balance = calculateVariableInvestmentBalance(formData.quantity, pricePerUnit);
+                            }
+                            setFormData(newFormData);
+                            setErrors({ ...errors, pricePerUnit: "" });
+                          }}
+                          className={`w-full pl-8 pr-4 py-3 bg-surface text-text-primary rounded-2xl text-[20px] leading-[28px] outline-none ${
+                            errors.pricePerUnit ? "ring-2 ring-err" : ""
+                          }`}
+                          placeholder="1,234.56"
+                          style={{ minHeight: '44px', fontVariantNumeric: 'tabular-nums' }}
+                        />
+                      </div>
+                      {errors.pricePerUnit && (
+                        <p className="caption text-err mt-1">{errors.pricePerUnit}</p>
+                      )}
+                    </div>
+                    {formData.quantity && formData.pricePerUnit && (
+                      <div className="p-3 bg-brand/10 border border-brand/20 rounded-2xl">
+                        <p className="caption text-text-secondary mb-1">Balance calculado</p>
+                        <p className="text-[20px] leading-[28px] text-brand font-medium" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                          ${formData.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}
 
             {formData.accountType === "loan" && (
               <>
+                {/* Loan Subtype Selection */}
                 <div>
                   <label className="caption text-text-secondary mb-2 block">Tipo de préstamo</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, loanSubtype: "Personal" })}
+                      className={`p-3 rounded-2xl border transition-colors caption ${
+                        formData.loanSubtype === "Personal"
+                          ? "border-brand bg-brand/10 text-brand"
+                          : "border-divider text-text-secondary"
+                      }`}
+                      style={{ minHeight: '44px' }}
+                    >
+                      Personal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, loanSubtype: "Institutional" })}
+                      className={`p-3 rounded-2xl border transition-colors caption ${
+                        formData.loanSubtype === "Institutional"
+                          ? "border-brand bg-brand/10 text-brand"
+                          : "border-divider text-text-secondary"
+                      }`}
+                      style={{ minHeight: '44px' }}
+                    >
+                      Institucional
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="caption text-text-secondary mb-2 block">Categoría</label>
                   <div className="grid grid-cols-2 gap-2">
                     {["Personal", "Auto", "Hipotecario", "Otro"].map((type) => (
                       <button
@@ -618,31 +893,9 @@ export function AddAccountSheet({ isOpen, onClose, onSave }: AddAccountSheetProp
                     ))}
                   </div>
                 </div>
+
                 <div>
-                  <label className="caption text-text-secondary mb-2 block">Tasa de interés</label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={formData.interestRate || ""}
-                      onChange={(e) => {
-                        setFormData({ ...formData, interestRate: parseFloat(e.target.value) || undefined });
-                        setErrors({ ...errors, interestRate: "" });
-                      }}
-                      className={`w-full px-4 pr-8 py-3 bg-surface text-text-primary rounded-2xl outline-none ${
-                        errors.interestRate ? "ring-2 ring-err" : ""
-                      }`}
-                      placeholder="12.5"
-                      style={{ minHeight: '44px' }}
-                    />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary">%</span>
-                  </div>
-                  {errors.interestRate && (
-                    <p className="caption text-err mt-1">{errors.interestRate}</p>
-                  )}
-                </div>
-                <div>
-                  <label className="caption text-text-secondary mb-2 block">Pago periódico</label>
+                  <label className="caption text-text-secondary mb-2 block">Monto original del préstamo</label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-primary text-[20px] leading-[28px]">
                       $
@@ -650,55 +903,255 @@ export function AddAccountSheet({ isOpen, onClose, onSave }: AddAccountSheetProp
                     <input
                       type="number"
                       step="0.01"
-                      value={formData.paymentAmount || ""}
-                      onChange={(e) => setFormData({ ...formData, paymentAmount: parseFloat(e.target.value) || undefined })}
-                      className="w-full pl-8 pr-4 py-3 bg-surface text-text-primary rounded-2xl text-[20px] leading-[28px] outline-none"
-                      placeholder="500.00"
+                      value={formData.originalAmount || ""}
+                      onChange={(e) => {
+                        const originalAmount = parseFloat(e.target.value) || undefined;
+                        setFormData({ ...formData, originalAmount });
+                        setErrors({ ...errors, originalAmount: "" });
+                      }}
+                      className={`w-full pl-8 pr-4 py-3 bg-surface text-text-primary rounded-2xl text-[20px] leading-[28px] outline-none ${
+                        errors.originalAmount ? "ring-2 ring-err" : ""
+                      }`}
+                      placeholder="10,000.00"
                       style={{ minHeight: '44px', fontVariantNumeric: 'tabular-nums' }}
                     />
                   </div>
+                  {errors.originalAmount && (
+                    <p className="caption text-err mt-1">{errors.originalAmount}</p>
+                  )}
                 </div>
-                <div>
-                  <label className="caption text-text-secondary mb-2 block">Frecuencia de pago</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {["Mensual", "Quincenal", "Semanal", "Otro"].map((freq) => (
-                      <button
-                        key={freq}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, paymentFrequency: freq })}
-                        className={`p-3 rounded-2xl border transition-colors caption ${
-                          formData.paymentFrequency === freq
-                            ? "border-brand bg-brand/10 text-brand"
-                            : "border-divider text-text-secondary"
-                        }`}
+
+                {/* Personal Loan Fields */}
+                {formData.loanSubtype === "Personal" && (
+                  <>
+                    <div>
+                      <label className="caption text-text-secondary mb-2 block">Modalidad de pago</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, paymentMode: "ONE_TIME" })}
+                          className={`p-3 rounded-2xl border transition-colors caption ${
+                            formData.paymentMode === "ONE_TIME"
+                              ? "border-brand bg-brand/10 text-brand"
+                              : "border-divider text-text-secondary"
+                          }`}
+                          style={{ minHeight: '44px' }}
+                        >
+                          Pago único
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, paymentMode: "INSTALLMENTS" })}
+                          className={`p-3 rounded-2xl border transition-colors caption ${
+                            formData.paymentMode === "INSTALLMENTS"
+                              ? "border-brand bg-brand/10 text-brand"
+                              : "border-divider text-text-secondary"
+                          }`}
+                          style={{ minHeight: '44px' }}
+                        >
+                          Cuotas
+                        </button>
+                      </div>
+                    </div>
+
+                    {formData.paymentMode === "ONE_TIME" && (
+                      <div>
+                        <label className="caption text-text-secondary mb-2 block">Fecha de vencimiento</label>
+                        <input
+                          type="date"
+                          value={formData.dueDate || ""}
+                          onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                          className="w-full px-4 py-3 bg-surface text-text-primary rounded-2xl outline-none"
+                          style={{ minHeight: '44px' }}
+                        />
+                      </div>
+                    )}
+
+                    {formData.paymentMode === "INSTALLMENTS" && (
+                      <>
+                        <div>
+                          <label className="caption text-text-secondary mb-2 block">Número de cuotas</label>
+                          <input
+                            type="number"
+                            step="1"
+                            value={formData.totalInstallments || ""}
+                            onChange={(e) => {
+                              const totalInstallments = parseInt(e.target.value) || undefined;
+                              const newFormData = { ...formData, totalInstallments };
+                              // Auto-calculate installment amount
+                              if (totalInstallments && formData.originalAmount) {
+                                newFormData.paymentAmount = calculatePersonalLoanInstallment(formData.originalAmount, totalInstallments);
+                              }
+                              setFormData(newFormData);
+                              setErrors({ ...errors, totalInstallments: "" });
+                            }}
+                            className={`w-full px-4 py-3 bg-surface text-text-primary rounded-2xl outline-none ${
+                              errors.totalInstallments ? "ring-2 ring-err" : ""
+                            }`}
+                            placeholder="12"
+                            style={{ minHeight: '44px' }}
+                          />
+                          {errors.totalInstallments && (
+                            <p className="caption text-err mt-1">{errors.totalInstallments}</p>
+                          )}
+                        </div>
+                        {formData.totalInstallments && formData.originalAmount && (
+                          <div className="p-3 bg-brand/10 border border-brand/20 rounded-2xl">
+                            <p className="caption text-text-secondary mb-1">Monto por cuota</p>
+                            <p className="text-[20px] leading-[28px] text-brand font-medium" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                              ${formData.paymentAmount?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                        )}
+                        <div>
+                          <label className="caption text-text-secondary mb-2 block">Próxima fecha de pago</label>
+                          <input
+                            type="date"
+                            value={formData.nextPaymentDate || ""}
+                            onChange={(e) => setFormData({ ...formData, nextPaymentDate: e.target.value })}
+                            className="w-full px-4 py-3 bg-surface text-text-primary rounded-2xl outline-none"
+                            style={{ minHeight: '44px' }}
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    <div>
+                      <label className="caption text-text-secondary mb-2 block">Prestamista (opcional)</label>
+                      <input
+                        type="text"
+                        value={formData.lenderInfo || ""}
+                        onChange={(e) => setFormData({ ...formData, lenderInfo: e.target.value })}
+                        className="w-full px-4 py-3 bg-surface text-text-primary rounded-2xl outline-none"
+                        placeholder="Ej. Familiar, Amigo"
                         style={{ minHeight: '44px' }}
-                      >
-                        {freq}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="caption text-text-secondary mb-2 block">Próxima fecha de pago</label>
-                  <input
-                    type="date"
-                    value={formData.nextPaymentDate || ""}
-                    onChange={(e) => setFormData({ ...formData, nextPaymentDate: e.target.value })}
-                    className="w-full px-4 py-3 bg-surface text-text-primary rounded-2xl outline-none"
-                    style={{ minHeight: '44px' }}
-                  />
-                </div>
-                <div>
-                  <label className="caption text-text-secondary mb-2 block">Prestamista (opcional)</label>
-                  <input
-                    type="text"
-                    value={formData.lenderInfo || ""}
-                    onChange={(e) => setFormData({ ...formData, lenderInfo: e.target.value })}
-                    className="w-full px-4 py-3 bg-surface text-text-primary rounded-2xl outline-none"
-                    placeholder="Ej. Banco X, Familiar"
-                    style={{ minHeight: '44px' }}
-                  />
-                </div>
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* Institutional Loan Fields */}
+                {formData.loanSubtype === "Institutional" && (
+                  <>
+                    <div>
+                      <label className="caption text-text-secondary mb-2 block">Tasa de interés anual</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={formData.interestRate || ""}
+                          onChange={(e) => {
+                            const interestRate = parseFloat(e.target.value) || undefined;
+                            const newFormData = { ...formData, interestRate };
+                            // Auto-calculate payment if all fields present
+                            if (interestRate && formData.originalAmount && formData.loanTerm) {
+                              newFormData.paymentAmount = calculateLoanPayment(
+                                formData.originalAmount,
+                                interestRate,
+                                formData.loanTerm
+                              );
+                            }
+                            setFormData(newFormData);
+                            setErrors({ ...errors, interestRate: "" });
+                          }}
+                          className={`w-full px-4 pr-8 py-3 bg-surface text-text-primary rounded-2xl outline-none ${
+                            errors.interestRate ? "ring-2 ring-err" : ""
+                          }`}
+                          placeholder="12.5"
+                          style={{ minHeight: '44px' }}
+                        />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary">%</span>
+                      </div>
+                      {errors.interestRate && (
+                        <p className="caption text-err mt-1">{errors.interestRate}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="caption text-text-secondary mb-2 block">Plazo (meses)</label>
+                      <input
+                        type="number"
+                        step="1"
+                        value={formData.loanTerm || ""}
+                        onChange={(e) => {
+                          const loanTerm = parseInt(e.target.value) || undefined;
+                          const newFormData = { ...formData, loanTerm };
+                          // Auto-calculate payment if all fields present
+                          if (loanTerm && formData.originalAmount && formData.interestRate) {
+                            newFormData.paymentAmount = calculateLoanPayment(
+                              formData.originalAmount,
+                              formData.interestRate,
+                              loanTerm
+                            );
+                          }
+                          setFormData(newFormData);
+                          setErrors({ ...errors, loanTerm: "" });
+                        }}
+                        className={`w-full px-4 py-3 bg-surface text-text-primary rounded-2xl outline-none ${
+                          errors.loanTerm ? "ring-2 ring-err" : ""
+                        }`}
+                        placeholder="24"
+                        style={{ minHeight: '44px' }}
+                      />
+                      {errors.loanTerm && (
+                        <p className="caption text-err mt-1">{errors.loanTerm}</p>
+                      )}
+                    </div>
+
+                    {formData.originalAmount && formData.interestRate && formData.loanTerm && (
+                      <div className="p-3 bg-brand/10 border border-brand/20 rounded-2xl">
+                        <p className="caption text-text-secondary mb-1">Pago mensual calculado</p>
+                        <p className="text-[20px] leading-[28px] text-brand font-medium" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                          ${formData.paymentAmount?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="caption text-text-secondary mb-2 block">Frecuencia de pago</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {["Mensual", "Quincenal", "Semanal", "Otro"].map((freq) => (
+                          <button
+                            key={freq}
+                            type="button"
+                            onClick={() => setFormData({ ...formData, paymentFrequency: freq })}
+                            className={`p-3 rounded-2xl border transition-colors caption ${
+                              formData.paymentFrequency === freq
+                                ? "border-brand bg-brand/10 text-brand"
+                                : "border-divider text-text-secondary"
+                            }`}
+                            style={{ minHeight: '44px' }}
+                          >
+                            {freq}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="caption text-text-secondary mb-2 block">Próxima fecha de pago</label>
+                      <input
+                        type="date"
+                        value={formData.nextPaymentDate || ""}
+                        onChange={(e) => setFormData({ ...formData, nextPaymentDate: e.target.value })}
+                        className="w-full px-4 py-3 bg-surface text-text-primary rounded-2xl outline-none"
+                        style={{ minHeight: '44px' }}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="caption text-text-secondary mb-2 block">Institución financiera</label>
+                      <input
+                        type="text"
+                        value={formData.lenderInfo || ""}
+                        onChange={(e) => setFormData({ ...formData, lenderInfo: e.target.value })}
+                        className="w-full px-4 py-3 bg-surface text-text-primary rounded-2xl outline-none"
+                        placeholder="Ej. Banco X, SOFOM"
+                        style={{ minHeight: '44px' }}
+                      />
+                    </div>
+                  </>
+                )}
               </>
             )}
 

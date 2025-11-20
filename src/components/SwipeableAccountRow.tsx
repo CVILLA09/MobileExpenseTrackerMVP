@@ -109,6 +109,7 @@ export function SwipeableAccountRow({ account, onTap, onDelete }: SwipeableAccou
   };
 
   const handleDelete = (e: React.MouseEvent) => {
+    console.log('🔴 Delete button clicked in SwipeableAccountRow for:', account.name);
     e.stopPropagation();
     onDelete(account);
   };

@@ -24,7 +24,7 @@ import { toast } from "sonner@2.0.3";
 
 interface CuentasScreenProps {
   onThemeToggle: () => void;
-  onNavigate: (screen: "home" | "cuentas" | "categorias") => void;
+  onNavigate: (screen: "home" | "cuentas" | "categorias" | "settings") => void;
   isDark: boolean;
   accountCategories: AccountCategory[];
   onUpdateAccountCategories: (categories: AccountCategory[]) => void;
@@ -82,12 +82,14 @@ export function CuentasScreen({
 
   // Handler for delete button on swipe reveal
   const handleAccountDelete = (account: IndividualAccount) => {
+    console.log('🗑️ handleAccountDelete called with:', account);
     setAccountToDelete(account);
     setIsDeleteDialogOpen(true);
   };
 
   // Handler for confirming delete
   const handleConfirmDelete = () => {
+    console.log('✅ handleConfirmDelete called, accountToDelete:', accountToDelete);
     if (!accountToDelete) return;
 
     // Find the category that contains this account
@@ -97,30 +99,40 @@ export function CuentasScreen({
 
     if (!categoryWithAccount) return;
 
-    // Remove account from category
-    const updatedCategories = accountCategories.map(cat => {
-      if (cat.id !== categoryWithAccount.id) return cat;
+    // Remove account from category and filter out empty categories
+    const updatedCategories = accountCategories
+      .map(cat => {
+        if (cat.id !== categoryWithAccount.id) return cat;
 
-      // Filter out the account to delete
-      const filteredAccounts = cat.accounts.filter(
-        acc => acc.id !== accountToDelete.id
-      );
+        // Filter out the account to delete
+        const filteredAccounts = cat.accounts.filter(
+          acc => acc.id !== accountToDelete.id
+        );
 
-      // Recalculate total
-      const updatedTotal = filteredAccounts.reduce((sum, acc) => sum + acc.balance, 0);
+        // Recalculate total
+        const updatedTotal = filteredAccounts.reduce((sum, acc) => sum + acc.balance, 0);
 
-      return {
-        ...cat,
-        accounts: filteredAccounts,
-        total: updatedTotal,
-      };
-    });
+        return {
+          ...cat,
+          accounts: filteredAccounts,
+          total: updatedTotal,
+        };
+      })
+      .filter(cat => cat.accounts.length > 0); // Remove empty categories
 
     // Update state
     onUpdateAccountCategories(updatedCategories);
 
-    // Store deleted account for undo
+    // Store deleted account for undo (including original category for restoration)
     setDeletedAccount({ account: accountToDelete, categoryId: categoryWithAccount.id });
+
+    // Close expanded category if it becomes empty
+    const remainingAccounts = categoryWithAccount.accounts.filter(
+      acc => acc.id !== accountToDelete.id
+    );
+    if (remainingAccounts.length === 0 && expandedCategory === categoryWithAccount.id) {
+      setExpandedCategory(null);
+    }
 
     // Show success toast with undo
     toast.success("Cuenta eliminada", {
@@ -143,19 +155,65 @@ export function CuentasScreen({
 
     const { account, categoryId } = deletedAccount;
 
-    // Restore the account
-    const updatedCategories = accountCategories.map(cat => {
-      if (cat.id !== categoryId) return cat;
+    // Check if category still exists
+    const categoryExists = accountCategories.some(cat => cat.id === categoryId);
 
-      const updatedAccounts = [...cat.accounts, account];
-      const updatedTotal = updatedAccounts.reduce((sum, acc) => sum + acc.balance, 0);
+    let updatedCategories: AccountCategory[];
 
-      return {
-        ...cat,
-        accounts: updatedAccounts,
-        total: updatedTotal,
+    if (categoryExists) {
+      // Category exists, just add the account back
+      updatedCategories = accountCategories.map(cat => {
+        if (cat.id !== categoryId) return cat;
+
+        const updatedAccounts = [...cat.accounts, account];
+        const updatedTotal = updatedAccounts.reduce((sum, acc) => sum + acc.balance, 0);
+
+        return {
+          ...cat,
+          accounts: updatedAccounts,
+          total: updatedTotal,
+        };
+      });
+    } else {
+      // Category was deleted, need to recreate it
+      // First, find the original category info from the account
+      const accountTypeMapping: Record<string, { name: string; type: "asset" | "liability"; icon: AccountCategory["icon"] }> = {
+        cash: { name: "Cash", type: "asset", icon: "cash" },
+        checking: { name: "Checking", type: "asset", icon: "checking" },
+        savings: { name: "Savings", type: "asset", icon: "savings" },
+        investment: { name: "Investment", type: "asset", icon: "investment" },
+        credit: { name: "Credit", type: "liability", icon: "credit" },
+        loan: { name: "Loan", type: "liability", icon: "loan" },
       };
-    });
+
+      // Determine category type from categoryId (e.g., "1" for Cash, "5" for Credit, etc.)
+      const categoryNames = ["Cash", "Checking", "Savings", "Investment", "Credit", "Loan"];
+      const categoryName = categoryNames[parseInt(categoryId) - 1] || "Cash";
+      const categoryInfo = Object.values(accountTypeMapping).find(info => info.name === categoryName) || accountTypeMapping.cash;
+
+      // Create new category with the restored account
+      const restoredCategory: AccountCategory = {
+        id: categoryId,
+        name: categoryInfo.name,
+        type: categoryInfo.type,
+        icon: categoryInfo.icon,
+        accounts: [account],
+        total: account.balance,
+      };
+
+      // Add category back in the correct position
+      const newCategories = [...accountCategories, restoredCategory].sort((a, b) => {
+        // Mantener el orden: assets primero, luego liabilities
+        if (a.type !== b.type) {
+          return a.type === "asset" ? -1 : 1;
+        }
+        // Dentro del mismo tipo, mantener el orden original
+        const order = ["Cash", "Checking", "Savings", "Investment", "Credit", "Loan"];
+        return order.indexOf(a.name) - order.indexOf(b.name);
+      });
+
+      updatedCategories = newCategories;
+    }
 
     onUpdateAccountCategories(updatedCategories);
     setDeletedAccount(null);

@@ -4,8 +4,8 @@ import { X, Home, Wallet, Tag, Settings } from "lucide-react";
 interface NavigationDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  onNavigate?: (screen: "home" | "cuentas" | "categorias") => void;
-  activeScreen?: "home" | "cuentas" | "categorias";
+  onNavigate?: (screen: "home" | "cuentas" | "categorias" | "settings") => void;
+  activeScreen?: "home" | "cuentas" | "categorias" | "settings";
 }
 
 const menuItems = [
@@ -24,17 +24,12 @@ export function NavigationDrawer({ isOpen, onClose, onNavigate, activeScreen = "
   };
 
   const handleItemClick = (itemId: string) => {
-    const screenMap: Record<string, "home" | "cuentas" | "categorias"> = {
+    const screenMap: Record<string, "home" | "cuentas" | "categorias" | "settings"> = {
       inicio: "home",
       cuentas: "cuentas",
       categorias: "categorias",
+      ajustes: "settings",
     };
-
-    if (itemId === "ajustes") {
-      // Settings handled separately
-      onClose();
-      return;
-    }
 
     const screen = screenMap[itemId];
     if (screen && onNavigate) {
@@ -96,6 +91,7 @@ export function NavigationDrawer({ isOpen, onClose, onNavigate, activeScreen = "
                       inicio: "home",
                       cuentas: "cuentas",
                       categorias: "categorias",
+                      ajustes: "settings",
                     };
                     const isActive = screenMap[item.id] === activeScreen;
                     

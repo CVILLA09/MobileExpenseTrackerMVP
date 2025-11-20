@@ -3,14 +3,19 @@ import { OnboardingScreen } from "./screens/OnboardingScreen";
 import { HomeScreen } from "./screens/HomeScreen";
 import { CuentasScreen } from "./screens/CuentasScreen";
 import { CategoriasScreen, Category } from "./screens/CategoriasScreen";
+import { SettingsScreen } from "./screens/SettingsScreen";
 import { ManualForm } from "./components/ManualForm";
+import { SwipeableScreen } from "./components/SwipeableScreen";
 import { TransactionData } from "./components/ConfirmCard";
 import { Transaction } from "./components/TxnItem";
 import { Toaster } from "./components/ui/sonner";
 import { toast } from "sonner@2.0.3";
 import { isAssetAccount, isLiabilityAccount, ICON_TO_ACCOUNT_TYPE } from "./utils/accounts";
 
-type Screen = "onboarding" | "home" | "cuentas" | "categorias";
+type Screen = "onboarding" | "home" | "cuentas" | "categorias" | "settings";
+
+// Screen order for swipe navigation
+const SCREEN_ORDER: Screen[] = ["home", "cuentas", "categorias", "settings"];
 
 // Tipos de cuentas
 export interface IndividualAccount {
@@ -386,13 +391,33 @@ export default function App() {
     setIsDark(!isDark);
   };
 
-  const handleNavigate = (screenName: "home" | "cuentas" | "categorias") => {
+  const handleNavigate = (screenName: "home" | "cuentas" | "categorias" | "settings") => {
     setScreen(screenName);
   };
 
   const handleCategoriesChange = (newCategories: Category[]) => {
     setCategories(newCategories);
   };
+
+  // Swipe navigation handlers
+  const handleSwipeLeft = () => {
+    const currentIndex = SCREEN_ORDER.indexOf(screen);
+    if (currentIndex < SCREEN_ORDER.length - 1) {
+      setScreen(SCREEN_ORDER[currentIndex + 1]);
+    }
+  };
+
+  const handleSwipeRight = () => {
+    const currentIndex = SCREEN_ORDER.indexOf(screen);
+    if (currentIndex > 0) {
+      setScreen(SCREEN_ORDER[currentIndex - 1]);
+    }
+  };
+
+  // Check if swipe is allowed
+  const currentScreenIndex = SCREEN_ORDER.indexOf(screen);
+  const canSwipeLeft = currentScreenIndex < SCREEN_ORDER.length - 1;
+  const canSwipeRight = currentScreenIndex > 0;
 
   return (
     <>
@@ -401,49 +426,85 @@ export default function App() {
       )}
 
       {screen === "home" && (
-        <HomeScreen
-          messages={messages}
-          transactions={transactions}
-          confirmCard={confirmCard}
-          todayStats={stats.today}
-          monthStats={stats.month}
-          onSendMessage={handleSendMessage}
-          onConfirm={handleConfirm}
-          onEdit={handleEdit}
-          onFABClick={handleFABClick}
-          onSuggestionClick={handleSuggestionClick}
-          onThemeToggle={handleSettingsClick}
-          onNavigate={handleNavigate}
-          isDark={isDark}
-          categories={categories}
-          accounts={accountCategories
-            .filter(cat => cat.type === "asset") // Solo categorías de activos
-            .flatMap(cat => cat.accounts.map(acc => ({ 
-              id: acc.id, 
-              balance: acc.balance, 
-              name: acc.name 
-            })))}
-        />
+        <SwipeableScreen
+          onSwipeLeft={handleSwipeLeft}
+          onSwipeRight={handleSwipeRight}
+          canSwipeLeft={canSwipeLeft}
+          canSwipeRight={canSwipeRight}
+        >
+          <HomeScreen
+            messages={messages}
+            transactions={transactions}
+            confirmCard={confirmCard}
+            todayStats={stats.today}
+            monthStats={stats.month}
+            onSendMessage={handleSendMessage}
+            onConfirm={handleConfirm}
+            onEdit={handleEdit}
+            onFABClick={handleFABClick}
+            onSuggestionClick={handleSuggestionClick}
+            onThemeToggle={handleSettingsClick}
+            onNavigate={handleNavigate}
+            isDark={isDark}
+            categories={categories}
+            accounts={accountCategories
+              .filter(cat => cat.type === "asset") // Solo categorías de activos
+              .flatMap(cat => cat.accounts.map(acc => ({
+                id: acc.id,
+                balance: acc.balance,
+                name: acc.name
+              })))}
+          />
+        </SwipeableScreen>
       )}
 
       {screen === "cuentas" && (
-        <CuentasScreen
-          onThemeToggle={handleSettingsClick}
-          onNavigate={handleNavigate}
-          isDark={isDark}
-          accountCategories={accountCategories}
-          onUpdateAccountCategories={setAccountCategories}
-        />
+        <SwipeableScreen
+          onSwipeLeft={handleSwipeLeft}
+          onSwipeRight={handleSwipeRight}
+          canSwipeLeft={canSwipeLeft}
+          canSwipeRight={canSwipeRight}
+        >
+          <CuentasScreen
+            onThemeToggle={handleSettingsClick}
+            onNavigate={handleNavigate}
+            isDark={isDark}
+            accountCategories={accountCategories}
+            onUpdateAccountCategories={setAccountCategories}
+          />
+        </SwipeableScreen>
       )}
 
       {screen === "categorias" && (
-        <CategoriasScreen
-          onThemeToggle={handleSettingsClick}
-          onNavigate={handleNavigate}
-          isDark={isDark}
-          categories={categories}
-          onCategoriesChange={handleCategoriesChange}
-        />
+        <SwipeableScreen
+          onSwipeLeft={handleSwipeLeft}
+          onSwipeRight={handleSwipeRight}
+          canSwipeLeft={canSwipeLeft}
+          canSwipeRight={canSwipeRight}
+        >
+          <CategoriasScreen
+            onThemeToggle={handleSettingsClick}
+            onNavigate={handleNavigate}
+            isDark={isDark}
+            categories={categories}
+            onCategoriesChange={handleCategoriesChange}
+          />
+        </SwipeableScreen>
+      )}
+
+      {screen === "settings" && (
+        <SwipeableScreen
+          onSwipeLeft={handleSwipeLeft}
+          onSwipeRight={handleSwipeRight}
+          canSwipeLeft={canSwipeLeft}
+          canSwipeRight={canSwipeRight}
+        >
+          <SettingsScreen
+            onThemeToggle={handleSettingsClick}
+            onNavigate={handleNavigate}
+            isDark={isDark}
+          />
+        </SwipeableScreen>
       )}
 
       <ManualForm
